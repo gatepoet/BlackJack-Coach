@@ -1,37 +1,14 @@
-# Sample test file for card counting logic
+import { countCard, cumulativeCount, COUNT_MAP } from '../src/utils/counting.js';
 
-import { countCard, getCount } from '../src/utils/counting.js';
-import { describe, it, expect } from 'vitest';
-
-describe('Hi‑Lo counting', () => {
-  beforeEach(() => {
-    // Reset any global state if the module exposes it. If not, simply
-    // re‑import the module.
-    if (typeof countCard.reset === 'function') countCard.reset();
+describe('Card counting logic', () => {
+  test('HiLo counting values', () => {
+    expect(countCard('HiLo', '2')).toBe(1);
+    expect(countCard('HiLo', '10')).toBe(-1);
+    expect(countCard('HiLo', '7')).toBe(0);
   });
 
-  it('starts at 0', () => {
-    expect(getCount('HiLo')).toBe(0);
-  });
-
-  it('counts low cards (+1) correctly', () => {
-    ['2','3','4','5','6'].forEach(rank => {
-      countCard('HiLo', rank);
-      expect(getCount('HiLo')).toBe(rank.length); // each low card adds 1
-    });
-  });
-
-  it('counts high cards (−1) correctly', () => {
-    ['10','J','Q','K','A'].forEach(rank => {
-      countCard('HiLo', rank);
-      expect(getCount('HiLo')).toBe(-rank.length);
-    });
-  });
-
-  it('ignores neutral cards (0)', () => {
-    ['7','8','9'].forEach(rank => {
-      countCard('HiLo', rank);
-      expect(getCount('HiLo')).toBe(0);
-    });
+  test('Cumulative count', () => {
+    const cards = [{rank:'2'}, {rank:'10'}, {rank:'7'}];
+    expect(cumulativeCount('HiLo', cards)).toBe(0);
   });
 });
