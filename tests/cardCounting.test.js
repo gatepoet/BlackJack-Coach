@@ -1,14 +1,7 @@
-// tests/cardCounting.test.js
-// Basic unit tests for the Hi‑Lo card‑counting logic used in the project.
-// The implementation lives in `src/utils/counting.js` (you can copy the logic
-// directly from `script.js` if you don’t have a separate module).
+# Sample test file for card counting logic
 
 import { countCard, getCount } from '../src/utils/counting.js';
 import { describe, it, expect } from 'vitest';
-
-// Helper to reset the count before each test – the original script keeps
-// state in a global variable. In a testable design we expose a reset
-// function, otherwise we simply re‑import the module.
 
 describe('Hi‑Lo counting', () => {
   beforeEach(() => {
