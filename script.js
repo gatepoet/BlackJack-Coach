@@ -83,19 +83,19 @@ function buildTable() {
     const col = document.createElement('div');
     col.className = 'column';
     col.innerHTML = `
-      <div class=\"seat-header\">
-        <div class=\"seat-round ${seat==='dealer'?'dealer':'player'} ${seat===YOUR_SEAT?'your-seat':''}\" data-seat=\"${seat}\">
+      <div class="seat-header">
+        <div class="seat-round ${seat==='dealer'?'dealer':'player'} ${seat===YOUR_SEAT?'your-seat':''}" data-seat="${seat}">
           ${seat === 'dealer' ? 'D' : seat}
         </div>
       </div>
-      <div class=\"hand\" id=\"hand-${seat}\"></div>
+      <div class="hand" id="hand-${seat}"></div>
       
-      <div class=\"split-container\" id=\"split-${seat}\" style=\"display:none;\">
-        <div class=\"split-hand\"><div class=\"split-label\">A</div><div class=\"hand\" id=\"hand-${seat}A\"></div></div>
-        <div class=\"split-hand\"><div class=\"split-label\">B</div><div class=\"hand\" id=\"hand-${seat}B\"></div></div>
+      <div class="split-container" id="split-${seat}" style="display:none;">
+        <div class="split-hand"><div class="split-label">A</div><div class="hand" id="hand-${seat}A"></div></div>
+        <div class="split-hand"><div class="split-label">B</div><div class="hand" id="hand-${seat}B"></div></div>
       </div>
 
-      ${seat !== 'dealer' ? '<button class=\"split-btn\" id=\"splitBtn-'+seat+'\">SPLIT</button>' : ''}
+      ${seat !== 'dealer' ? '<button class="split-btn" id="splitBtn-'+seat+'">SPLIT</button>' : ''}
     `;
     table.appendChild(col);
 
@@ -147,7 +147,7 @@ function setInputTarget(t) {
   document.querySelectorAll('.split-hand').forEach(h => h.classList.remove('active'));
 
   const base = t.replace(/[AB]$/, '');
-  const header = document.querySelector(`.seat-round[data-seat=\"${base === 'dealer' ? 'dealer' : base}\"]`);
+  const header = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
   if (header) header.classList.add('active');
 
   if (activeSplit) {
@@ -202,7 +202,7 @@ document.addEventListener('keydown', e => {
     if (e.key === ' ') {
       e.preventDefault();
       const base = inputTarget.replace(/[AB]$/, '');
-      const seatEl = document.querySelector(`.seat-round[data-seat=\"${base === 'dealer' ? 'dealer' : base}\"]`);
+      const seatEl = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
       if (disabledSeats.has(base)) {
         disabledSeats.delete(base);
         seatEl.classList.remove('disabled');
@@ -275,10 +275,10 @@ function addCard(val) {
   mini.dataset.val = val;
   mini.dataset.suit = suit;
   mini.innerHTML = `
-    <span class=\"corner top-left\">${displayVal}</span>
-    <span class=\"corner bottom-right\" style=\"transform: rotate(180deg);\">${displayVal}</span>
-    <span class=\"suit top-right\">${sym}</span>
-    <span class=\"suit bottom-left\" style=\"transform: rotate(180deg);\">${sym}</span>
+    <span class="corner top-left">${displayVal}</span>
+    <span class="corner bottom-right" style="transform: rotate(180deg);">${displayVal}</span>
+    <span class="suit top-right">${sym}</span>
+    <span class="suit bottom-left" style="transform: rotate(180deg);">${sym}</span>
   `;
 
   const container = target.match(/[AB]$/)
@@ -570,9 +570,9 @@ function updateAll() {
   raEl.className = ra >= 0 ? '' : 'negative';
 
   const wong = document.getElementById('wongSignal');
-  if (tcAPC >= 1.0 || ra >= 0.5) { wong.textContent = \"WONG IN — PLAY! (Edge Layer)\"; wong.className = \"wong-enter\"; }
-  else if (tcAPC <= -1.0 || ra <= -0.5) { wong.textContent = \"WONG OUT — EXIT (Pre-Set Trigger)\"; wong.className = \"wong-exit\"; }
-  else { wong.textContent = \"WONGING: Neutral (Comp Layer)\"; wong.className = \"wong-neutral\"; }
+  if (tcAPC >= 1.0 || ra >= 0.5) { wong.textContent = "WONG IN — PLAY! (Edge Layer)"; wong.className = "wong-enter"; }
+  else if (tcAPC <= -1.0 || ra <= -0.5) { wong.textContent = "WONG OUT — EXIT (Pre-Set Trigger)"; wong.className = "wong-exit"; }
+  else { wong.textContent = "WONGING: Neutral (Comp Layer)"; wong.className = "wong-neutral"; }
 
   // Exact Insurance
   const dealerUp = hands.dealer[0]?.value;
@@ -782,7 +782,7 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
   if (comp && compOverrides[comp]?.[dValStr]) {
     const action = compOverrides[comp][dValStr];
     const cls = action === 'HIT' ? 'adv-hit' : action === 'STAND' ? 'adv-stand' : action === 'DOUBLE' ? 'adv-double' : 'adv-split';
-    return `<span class=\"${cls}\">${action}</span>${label}`;
+    return `<span class="${cls}">${action}</span>${label}`;
   }
 
   let total = 0, aces = 0;
@@ -808,43 +808,43 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
     key = `${total}v${dValStr}`;
   }
   if (i18[key] && tcEffective >= i18[key].index) {
-    return `<span class=\"${i18[key].class}\">${i18[key].action}</span>${label}`;
+    return `<span class="${i18[key].class}">${i18[key].action}</span>${label}`;
   }
   const surrKey = `${total}vs${dValStr}`;
   if (i18[surrKey] && tcEffective >= i18[surrKey].index) {
-    return `<span class=\"${i18[surrKey].class}\">${i18[surrKey].action}</span>${label}`;
+    return `<span class="${i18[surrKey].class}">${i18[surrKey].action}</span>${label}`;
   }
   // Surrender check for low TC
   if (tcEffective < 0.5 && total >= 17 && total <= 20) {
-    return `<span class=\"adv-surrender\">SURRENDER</span>${label}`;
+    return `<span class="adv-surrender">SURRENDER</span>${label}`;
   }
 
   if (isPair) {
     const pVal = pairVal;
-    if (pVal === 'A') return `<span class=\"adv-split\">SPLIT</span>${label}`;
-    if (pVal === '8') return (dNum >= 2 && dNum <= 9 && upcard !== 'A') ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-stand\">STAND</span>${label}`;
-    if (['10','J','Q','K'].includes(pVal)) return `<span class=\"adv-stand\">STAND</span>${label}`;
-    if (pVal === '9') return (dNum >= 2 && dNum <= 6 || (dNum >= 8 && dNum <= 9)) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-stand\">STAND</span>${label}`;
-    if (pVal === '7') return (dNum >= 2 && dNum <= 7) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-    if (pVal === '6') return (dNum >= 2 && dNum <= 6) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-    if (pVal === '4') return (dNum >= 5 && dNum <= 6) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-    if (pVal === '3' || pVal === '2') return (dNum >= 2 && dNum <= 7) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-    return `<span class=\"adv-hit\">HIT</span>${label}`;
+    if (pVal === 'A') return `<span class="adv-split">SPLIT</span>${label}`;
+    if (pVal === '8') return (dNum >= 2 && dNum <= 9 && upcard !== 'A') ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
+    if (['10','J','Q','K'].includes(pVal)) return `<span class="adv-stand">STAND</span>${label}`;
+    if (pVal === '9') return (dNum >= 2 && dNum <= 6 || (dNum >= 8 && dNum <= 9)) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
+    if (pVal === '7') return (dNum >= 2 && dNum <= 7) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+    if (pVal === '6') return (dNum >= 2 && dNum <= 6) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+    if (pVal === '4') return (dNum >= 5 && dNum <= 6) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+    if (pVal === '3' || pVal === '2') return (dNum >= 2 && dNum <= 7) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+    return `<span class="adv-hit">HIT</span>${label}`;
   }
 
   if (soft) {
-    if (total <= 17) return `<span class=\"adv-hit\">HIT</span>${label}`;
-    if (total === 18) return dNum <= 8 ? `<span class=\"adv-double\">DOUBLE</span>${label}` : dNum <= 8 ? `<span class=\"adv-stand\">STAND</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`; // Fixed soft 18
-    return `<span class=\"adv-stand\">STAND</span>${label}`;
+    if (total <= 17) return `<span class="adv-hit">HIT</span>${label}`;
+    if (total === 18) return dNum <= 8 ? '<span class="adv-double">DOUBLE</span>${label}' : dNum <= 10 ? '<span class="adv-stand">STAND</span>${label}' : '<span class="adv-hit">HIT</span>${label}'; }
+    return `<span class="adv-stand">STAND</span>${label}`;
   }
 
-  if (total <= 8) return `<span class=\"adv-hit\">HIT</span>${label}`;
-  if (total === 9) return dNum <= 3 ? `<span class=\"adv-hit\">HIT</span>${label}` : `<span class=\"adv-double\">DOUBLE</span>${label}`;
-  if (total === 10) return dNum <= 9 ? `<span class=\"adv-double\">DOUBLE</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-  if (total === 11) return upcard !== 'A' ? `<span class=\"adv-double\">DOUBLE</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-  if (total === 12) return (dNum <= 3 || dNum >= 7) ? `<span class=\"adv-hit\">HIT</span>${label}` : `<span class=\"adv-stand\">STAND</span>${label}`;
-  if (total >= 13 && total <= 16) return dNum <= 6 ? `<span class=\"adv-stand\">STAND</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
-  return `<span class=\"adv-stand\">STAND</span>${label}`;
+  if (total <= 8) return `<span class="adv-hit">HIT</span>${label}`;
+  if (total === 9) return dNum <= 3 ? `<span class="adv-hit">HIT</span>${label}` : `<span class="adv-double">DOUBLE</span>${label}`;
+  if (total === 10) return dNum <= 9 ? `<span class="adv-double">DOUBLE</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+  if (total === 11) return upcard !== 'A' ? `<span class="adv-double">DOUBLE</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+  if (total === 12) return (dNum <= 3 || dNum >= 7) ? `<span class="adv-hit">HIT</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
+  if (total >= 13 && total <= 16) return dNum <= 6 ? `<span class="adv-stand">STAND</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
+  return `<span class="adv-stand">STAND</span>${label}`;
 }
 
 // Build rank buttons
