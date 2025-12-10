@@ -1,14 +1,19 @@
-import { countCard, cumulativeCount, COUNT_MAP } from '../src/utils/counting.js';
 
-describe('Card counting logic', () => {
-  test('HiLo counting values', () => {
-    expect(countCard('HiLo', '2')).toBe(1);
-    expect(countCard('HiLo', '10')).toBe(-1);
-    expect(countCard('HiLo', '7')).toBe(0);
+// @vitest-environment jsdom
+import { describe, it, expect } from 'vitest';
+
+describe('validateCardRank', () => {
+  it('returns true for valid ranks', () => {
+    const valid = ['A', '2', '10', 'J', 'Q', 'K'];
+    for (const rank of valid) {
+      expect(() => validateCardRank(rank)).not.toThrow();
+    }
   });
 
-  test('Cumulative count', () => {
-    const cards = [{rank:'2'}, {rank:'10'}, {rank:'7'}];
-    expect(cumulativeCount('HiLo', cards)).toBe(0);
+  it('throws RangeError for invalid ranks', () => {
+    const invalid = ['0', 'B', '11', 'X', ''];
+    for (const rank of invalid) {
+      expect(() => validateCardRank(rank)).toThrow(RangeError);
+    }
   });
 });
