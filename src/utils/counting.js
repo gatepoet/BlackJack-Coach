@@ -38,3 +38,12 @@ export function countCard(system, rank) {
 export function cumulativeCount(system, cards) {
   return cards.reduce((sum, card) => sum + countCard(system, card.rank), 0);
 }
+
+// -------- Card rank validation --------
+const VALID_RANKS = Object.keys(CARD_VALUES);
+export function validateCardRank(rank) {
+  if (!VALID_RANKS.includes(rank)) {
+    throw new RangeError(`Invalid card rank: ${rank}`);
+  }
+  return true;
+}
