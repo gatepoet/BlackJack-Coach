@@ -61,7 +61,6 @@ function initRemaining() {
     remaining[rank] = {};
     suits.forEach(suit => remaining[rank][suit] = 8);
   });
-  acesLeft = 32;
 }
 
 function pickSuit(rank) {
@@ -264,7 +263,6 @@ function addCard(val) {
   const suit = pickSuit(val);
   remaining[val][suit]--;
   if (remaining[val][suit] < 0) remaining[val][suit] = 0; // Guard for negative counts
-  if (val === 'A') acesLeft--;
   cardsDealt++;
 
   const sym = symMap[suit];
@@ -330,7 +328,6 @@ function removeLastCardFromActiveHand() {
   counts.Zen.rc  -= map.Zen[card.value];
   remaining[card.value][suit]++;
   if (remaining[card.value][suit] < 0) remaining[card.value][suit] = 0; // Guard for negative counts
-  if (card.value === 'A') acesLeft++;
   cardsDealt--;
   card.element.remove();
   if (hand.length === 0) lastAddedCard = null;
@@ -540,6 +537,15 @@ function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flush:5}) {
 }
 
 function updateAll() {
+  // Guard against negative remaining counts
+  rankOrder.forEach(r => {
+    suits.forEach(s => {
+      if (remaining[r] && remaining[r][s] !== undefined) {
+        remaining[r][s] = Math.max(0, remaining[r][s]);
+      }
+    });
+  });
+
   // Aggregates
   let total_rem = 0;
   let rankTotals = rankOrder.map(r => {
@@ -548,11 +554,22 @@ function updateAll() {
     total_rem += tot;
     return tot;
   });
-  const decksLeft = total_rem / 52; // Removed 0.25 cap
-  const tcHiLo = counts.HiLo.rc / decksLeft;
-  const tcAPC  = counts.APC.rc  / decksLeft;
-  const tcZen = counts.Zen.rc / decksLeft;
+  const decksLeft = total_rem / 52;
+  let tcHiLo, tcAPC, tcZen;
+  if (decksLeft > 0.01) {
+    tcHiLo = counts.HiLo.rc / decksLeft;
+    tcAPC = counts.APC.rc / decksLeft;
+    tcZen = counts.Zen.rc / decksLeft;
+  } else {
+    tcHiLo = 0;
+    tcAPC = 0;
+    tcZen = 0;
+  }
   const pen = ((1 - total_rem / TOTAL_CARDS) * 100).toFixed(2); // Two decimal places
+
+  // Dynamic acesLeft
+  acesLeft = 0;
+  suits.forEach(s => acesLeft += remaining['A'][s] || 0);
 
   document.getElementById('penetration').textContent = pen + '%';
   document.getElementById('decksLeft').textContent = decksLeft.toFixed(2);
@@ -578,10 +595,9 @@ function updateAll() {
   const dealerUp = hands.dealer[0]?.value;
   if (dealerUp === 'A' && !insuranceResolved) {
     let tensLeft = 0;
-    ['10','J','Q','K'].forEach(r => {
-      rankOrder.forEach(rank => { if (rank === r) suits.forEach(s => tensLeft += remaining[rank][s] || 0); });
-    });
-    const pBJ = total_rem > 1 ? tensLeft / (total_rem - 1) : 0.3077;
+    const tenRanks = ['10', 'J', 'Q', 'K'];
+    tenRanks.forEach(r => suits.forEach(s => tensLeft += remaining[r][s] || 0));
+    const pBJ = total_rem > 0 ? tensLeft / total_rem : 0.3077;
     let insEV = pBJ - 0.5 + RA_FACTOR * ra; // Use configurable RA factor
     const take = insEV > 0;
     document.getElementById('insAdvice').textContent = take ? `TAKE INSURANCE (+${(insEV*100).toFixed(1)}%)` : 'NO INSURANCE';
@@ -591,13 +607,26 @@ function updateAll() {
     document.getElementById('insuranceBox').style.display = 'none';
   }
 
+  // User-selectable tcEffective
+  let tcEffective;
+  switch (indexSystem) {
+    case 'Zen':
+      tcEffective = tcZen;
+      break;
+    case 'APC':
+      tcEffective = tcAPC;
+      break;
+    default:
+      tcEffective = tcHiLo;
+      break;
+  }
+
   // Kelly Ramp or Original Mikki Ramp
   const bankroll = parseFloat(document.getElementById('bankroll').value) || 10000;
   const betUnit = parseFloat(document.getElementById('betUnit').value) || 25; // Fallback to default
   const mikkiMultiplier = parseFloat(document.getElementById('mikkiMultiplier').value) || 3; // New configurable input
   let units, betDollar;
 
-  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen, tcAPC); // Include APC
   if (useKelly) {
     const edge = EDGE_PER_TC * Math.max(0, tcEffective) * (1 + RA_FACTOR * ra); // Use configurable RA factor
     const fullKelly = edge / VAR;
@@ -615,9 +644,11 @@ function updateAll() {
   let heatLevel = 'Cool';
   let heatColor = '#94a3b8';
   if (useHeatSim) {
-    const heat = 1 + (VAR / VAR) * (1 - Math.abs(tcEffective)); // Simplified variance-based
+    let heat = 1 + (1 - Math.abs(tcEffective)); // Simplified variance-based
+    heat = Math.max(0.5, Math.min(2, heat));
     const variance = Math.random() * 0.6 + 0.7;
     units = Math.floor(units * heat * variance);
+    units = Math.min(units, Math.floor(bankroll / betUnit)); // Re-cap after adjustment
     betDollar = units * betUnit;
     heatLevel = heat < 0.8 ? 'Cool' : heat < 0.95 ? 'Warm' : 'Hot';
     heatColor = heat < 0.8 ? '#3b82f6' : heat < 0.95 ? '#f59e0b' : '#ef4444';
@@ -798,7 +829,19 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
   while (total > 21 && aces) { total -= 10; aces--; }
   const soft = aces > 0 && !isPair;
 
-  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen, tcAPC); // Include APC
+  // User-selectable tcEffective
+  let tcEffective;
+  switch (indexSystem) {
+    case 'Zen':
+      tcEffective = tcZen;
+      break;
+    case 'APC':
+      tcEffective = tcAPC;
+      break;
+    default:
+      tcEffective = tcHiLo;
+      break;
+  }
 
   let key = null;
   if (isPair) {
@@ -834,7 +877,11 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
 
   if (soft) {
     if (total <= 17) return `<span class="adv-hit">HIT</span>${label}`;
-    if (total === 18) return dNum <= 8 ? '<span class="adv-double">DOUBLE</span>${label}' : dNum <= 10 ? '<span class="adv-stand">STAND</span>${label}' : '<span class="adv-hit">HIT</span>${label}'; }
+    if (total === 18) {
+      if (dNum >= 3 && dNum <= 6) return `<span class="adv-double">DOUBLE</span>${label}`;
+      else if (dNum === 2 || dNum === 7 || dNum === 8) return `<span class="adv-stand">STAND</span>${label}`;
+      else return `<span class="adv-hit">HIT</span>${label}`;
+    }
     return `<span class="adv-stand">STAND</span>${label}`;
   }
 
