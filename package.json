@@ -1,18 +1,27 @@
 {
   "name": "blackjack-coach",
-  "version": "1.0.0",
-  "description": "Interactive blackjack coaching web app",
+  "version": "0.1.0",
+  "description": "An interactive Blackjack coaching tool with real-time card counting and betting strategies.",
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
-    "lint": "eslint . --ext .js",
-    "format": "prettier --write ."
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write .",
+    "prepare": "husky install"
   },
+  "keywords": ["blackjack", "card-counting", "betting"],
+  "author": "gatepoet",
+  "license": "MIT",
   "devDependencies": {
-    "vitest": "^2.0.0",
-    "eslint": "^9.0.0",
+    "vitest": "^1.0.0",
+    "eslint": "^8.0.0",
     "prettier": "^3.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   }
 }
