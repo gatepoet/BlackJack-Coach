@@ -1,41 +1,78 @@
-/* Updated script.js with fixes for card counting, bet sizing, and advice logic */
-// =============================================================
-// 1. Global constants and state
-// =============================================================
-const SHOE_DECKS = 8;                 // number of decks in shoe
-const TOTAL_CARDS = SHOE_DECKS * 52;   // total cards in shoe
-const PENETRATION = 0.75;              // 75% penetration used for true‑count
+const SHOE_DECKS = 8;
+const TOTAL_CARDS = SHOE_DECKS * 52;
+const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
+let remaining = {};
+let acesLeft = 32;
+let cardsDealt = 0;
+let insuranceResolved = false;
+let lastAddedCard = null;
 
-let acesLeft = 4 * SHOE_DECKS;        // dynamic count of remaining aces
-let remaining = {};                    // remaining cards per rank/suit
-let decksLeft = SHOE_DECKS;            // cards left per deck
-let total_rem = TOTAL_CARDS;           // total cards remaining in shoe
-let tcHiLo = 0;                       // HiLo true count
-let tcAPC  = 0;                       // APC true count
-let tcZen  = 0;                       // Zen true count
-let ra     = 0;                       // Relative Ace count
-let indexSystem = 'HiLo';             // user selected system
+const counts = { HiLo: { rc: 0 }, APC: { rc: 0 }, Zen: { rc: 0 } };
+const map = {
+  HiLo: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1},
+  APC:  {'A':0,'2':1,'3':1,'4':2,'5':3,'6':2,'7':2,'8':1,'9':-3,'10':-4},
+  Zen: {'A':-1,'2':1,'3':1,'4':2,'5':2,'6':2,'7':1,'8':0,'9':0,'10':-2}
+};
+['J','Q','K'].forEach(face => {
+  for (let sys in map) {
+    map[sys][face] = map[sys]['10'];
+  }
+});
 
-// =============================================================
-// 2. Card counting logic
-// =============================================================
-function initRemaining() {
-  remaining = {};
-  const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
-  ranks.forEach(r => {
-    remaining[r] = { '♠': SHOE_DECKS, '♣': SHOE_DECKS, '♥': SHOE_DECKS, '♦': SHOE_DECKS };
-  });
-  acesLeft = 4 * SHOE_DECKS;
-  decksLeft = SHOE_DECKS;
-  total_rem = TOTAL_CARDS;
+const VAR = 1.309; // 8dk H17 variance
+const EDGE_PER_TC = 0.005; // Edge per TC
+const RA_FACTOR = 0.5; // Configurable RA multiplier (default 0.5, adjustable)
+
+let YOUR_SEAT = '1';
+let inputTarget = '1';
+let activeSplit = null;
+let disabledSeats = new Set(); // Seats to skip this hand
+let useCompDep = false;
+let useHeatSim = false;
+let indexSystem = 'Basic'; // Basic, Zen, APC
+let useKelly = true;
+const hands = { dealer: [] };
+for (let i = 1; i <= 7; i++) hands[i] = [];
+const handContainers = {};
+const splitContainers = {};
+const splitButtons = {};
+
+const rankOrder = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const suitMap = {'s':'spades','d':'diamonds','x':'hearts','c':'clubs'};
+const symMap = {'spades':'♠','hearts':'♥','diamonds':'♦','clubs':'♣'};
+const straightTriples = [
+  ['A','2','3'], ['2','3','4'], ['3','4','5'], ['4','5','6'], ['5','6','7'],
+  ['6','7','8'], ['7','8','9'], ['8','9','10'], ['9','10','J'], ['10','J','Q'],
+  ['J','Q','K'], ['Q','K','A']
+];
+const order = ['dealer', '7', '6', '5', '4', '3', '2', '1'];
+
+function getFirstPlayingSeat() {
+  for (let seat = 1; seat <= 7; seat++) {
+    const seatStr = seat.toString();
+    if (!disabledSeats.has(seatStr)) return seatStr;
+  }
+  return YOUR_SEAT; // Fallback to your seat if all disabled
 }
 
-function addCard(val, suit) {
-  if (!remaining[val]) return;
-  if (remaining[val][suit] > 0) remaining[val][suit]--;
-  else remaining[val][suit] = 0; // guard against negative counts
-  total_rem--;                    // card dealt
-  decksLeft = Math.max(0.1, total_rem / 52); // avoid division by zero
+function initRemaining() {
+  remaining = {};
+  rankOrder.forEach(rank => {
+    remaining[rank] = {};
+    suits.forEach(suit => remaining[rank][suit] = 8);
+  });
+}
+
+function pickSuit(rank) {
+  let total = 0;
+  suits.forEach(s => total += remaining[rank][s] || 0);
+  if (total === 0) return suits[0];
+  let rand = Math.random() * total;
+  for (let suit of suits) {
+    rand -= remaining[rank][suit] || 0;
+    if (rand <= 0) return suit;
+  }
+  return suits[0];
 }
 
 function buildTable() {
@@ -61,27 +98,30 @@ function buildTable() {
     `;
     table.appendChild(col);
 
-  // Running counts (we assume running count is accumulated in tcX variables)
-  if (indexSystem === 'HiLo') tcHiLo += hc;
-  if (indexSystem === 'APC')  tcAPC  += apc;
-  if (indexSystem === 'Zen')  tcZen  += zen;
+    handContainers[seat] = col.querySelector(`#hand-${seat}`);
+    splitContainers[seat] = col.querySelector(`#split-${seat}`);
+    if (seat !== 'dealer') splitButtons[seat] = col.querySelector('#splitBtn-'+seat);
 
-  // True counts
-  tcHiLo = Math.round(tcHiLo / decksLeft);
-  tcAPC  = Math.round(tcAPC  / decksLeft);
-  tcZen  = Math.round(tcZen  / decksLeft);
+    const header = col.querySelector('.seat-round');
+    header.addEventListener('dblclick', (e) => { e.stopPropagation(); YOUR_SEAT = seat; document.querySelectorAll('.your-seat').forEach(x=>x.classList.remove('your-seat')); header.classList.add('your-seat'); });
+    header.addEventListener('click', () => setInputTarget(seat));
 
-  // Relative Ace count
-  const expAces = (acesLeft / (32 * decksLeft)) - 1;
-  ra = Math.round(expAces * 10) / 10;
-})
+    if (seat !== 'dealer') {
+      splitButtons[seat].onclick = () => performSplit(seat);
+      new Sortable(col.querySelector(`#hand-${seat}A`), { group: 'cards', animation: 150, onEnd: updateAll });
+      new Sortable(col.querySelector(`#hand-${seat}B`), { group: 'cards', animation: 150, onEnd: updateAll });
+    }
+    new Sortable(handContainers[seat], { group: 'cards', animation: 150, onEnd: updateAll });
+  });
+}
 
-// =============================================================
-// 3. Bet sizing logic
-// =============================================================
-const EDGE_PER_TC = 0.005;   // 0.5% edge per true count point
-const RA_FACTOR = 1.0;       // full impact of relative ace
-const VARIANCE  = 1.309;     // variance for 8‑deck shoe, H17
+function setInputTarget(t) {
+  if (!t.match(/[AB]$/) && splitContainers[t] && splitContainers[t].style.display !== 'none') {
+    const aHand = hands[t + 'A'];
+    const bHand = hands[t + 'B'];
+    if (bHand && bHand.length > 0) t = t + 'B';
+    else if (aHand && aHand.length > 0) t = t + 'A';
+  }
 
   inputTarget = t;
   // Skip disabled seats (only for base seats, not splits)
@@ -223,7 +263,6 @@ function addCard(val) {
   const suit = pickSuit(val);
   remaining[val][suit]--;
   if (remaining[val][suit] < 0) remaining[val][suit] = 0; // Guard for negative counts
-  if (val === 'A') acesLeft--;
   cardsDealt++;
 
   const sym = symMap[suit];
@@ -289,7 +328,6 @@ function removeLastCardFromActiveHand() {
   counts.Zen.rc  -= map.Zen[card.value];
   remaining[card.value][suit]++;
   if (remaining[card.value][suit] < 0) remaining[card.value][suit] = 0; // Guard for negative counts
-  if (card.value === 'A') acesLeft++;
   cardsDealt--;
   card.element.remove();
   if (hand.length === 0) lastAddedCard = null;
@@ -345,50 +383,169 @@ document.getElementById('nextHandBtn').onclick = () => {
   updateAll();
 };
 
-function getAdvice(hand, dealerCard) {
-  const total = hand.reduce((sum, c) => sum + cardValue(c), 0);
-  const dNum = dealerCardValue(dealerCard);
-  const pair = hand.length === 2 && hand[0] === hand[1];
-  // Pair logic
-  if (pair) {
-    const val = hand[0];
-    const key = 'pair' + val + 'v' + dNum;
-    if (basicStrategy[key]) return basicStrategy[key];
+document.getElementById('shuffleBtn').onclick = () => {
+  if (!confirm('Start fresh 8-deck shoe?')) return;
+  initRemaining();
+  cardsDealt = 0;
+  counts.HiLo.rc = 0;
+  counts.APC.rc = 0;
+  counts.Zen.rc = 0;
+  document.querySelectorAll('.mini').forEach(m => m.remove());
+  for (const s in hands) hands[s] = [];
+  disabledSeats.clear();
+  document.querySelectorAll('.seat-round').forEach(el => el.classList.remove('disabled'));  insuranceResolved = false;
+  lastAddedCard = null;
+  document.getElementById('insuranceBox').style.display = 'none';
+  setInputTarget('1');
+  updateAll();
+};
+
+document.getElementById('bjYes').onclick = () => { if (!insuranceResolved) addCard('10'); insuranceResolved = true; updateAll(); document.getElementById('insuranceBox').style.display = 'none'; };
+document.getElementById('bjNo').onclick = () => {
+  insuranceResolved = true;
+  document.getElementById('insuranceBox').style.display = 'none';
+  updateAll();
+};
+
+// Charts
+const pieChart = new Chart(document.getElementById('pieChart'), {
+  type: 'doughnut',
+  data: { labels: rankOrder, datasets: [{ data: rankOrder.map(r => 32), backgroundColor: ['#ef4444','#f97316','#facc15','#a3e635','#22c55e','#14b8a6','#3b82f6','#8b5cf6','#ec4899','#6366f1','#1e40af','#dc2626','#991b1b'] }] },
+  options: { 
+    responsive: true, 
+    plugins: { 
+      legend: { display: false },
+      datalabels: {
+        color: '#fff',
+        font: { size: 10, weight: 'bold' },
+        formatter: (value) => value
+      }
+    } 
+  },
+  plugins: [ChartDataLabels]
+});
+
+const suitChart = new Chart(document.getElementById('suitChart'), {
+  type: 'doughnut',
+  data: { labels: ['♠', '♣', '♥', '♦'], datasets: [{ data: [104,104,104,104], backgroundColor: ['#000','#009900ff','#dc2626','#0003c9'] }] },
+  options: { 
+    responsive: true, 
+    plugins: { 
+      legend: { display: false },
+      datalabels: {
+        color: '#fff',
+        font: { size: 10, weight: 'bold' },
+        formatter: (value) => value
+      }
+    } 
+  },
+  plugins: [ChartDataLabels]
+});
+
+function computeTotal(hand) {
+  if (!hand || hand.length === 0) return { total: 0, bust: false, soft: false };
+  let total = 0, aces = 0;
+  for (const c of hand) {
+    const v = c.value === 'A' ? 11 : (['10','J','Q','K'].includes(c.value) ? 10 : +c.value);
+    total += v;
+    if (c.value === 'A') aces++;
   }
-  // Soft totals
-  if (hand.some(c => c === 'A')) {
-    const softTotal = total - 10; // Ace counted as 11
-    const key = 'soft' + softTotal + 'v' + dNum;
-    if (basicStrategy[key]) return basicStrategy[key];
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
   }
-  // Hard totals
-  const key = 'hard' + total + 'v' + dNum;
-  if (basicStrategy[key]) return basicStrategy[key];
-  // Fallback basic strategy
-  return basicStrategy['hard' + total + 'v' + dNum];
+  const bust = total > 21;
+  const soft = aces > 0 && !bust;
+  return { total, bust, soft };
 }
 
-function cardValue(card) {
-  if (card === 'A') return 11;
-  if (['T', 'J', 'Q', 'K'].includes(card)) return 10;
-  return parseInt(card, 10);
+function getComposition(hand) {
+  if (!useCompDep) return null;
+  const nonA = hand.map(c => c.value).filter(v => v !== 'A').sort().join('-');
+  const aces = hand.filter(c => c.value === 'A').length;
+  return aces ? nonA + '-A' + aces : nonA;
 }
 
-function dealerCardValue(card) {
-  if (card === 'A') return 11;
-  if (['T', 'J', 'Q', 'K'].includes(card)) return 10;
-  return parseInt(card, 10);
+function computePPEV(pPerfect=25, pColored=12, pMixed=6) {
+  let t = 0;
+  rankOrder.forEach(r => suits.forEach(s => t += remaining[r][s] || 0));
+  if (t < 5) return -1; // Guard for low counts
+  const denom = t * (t - 1);
+  let totalPair = 0, perfect = 0, colored = 0;
+  rankOrder.forEach(r => {
+    let numR = 0, numRed = 0, numBlack = 0, perfRed = 0, perfBlack = 0;
+    ['hearts', 'diamonds'].forEach(s => {
+      let ns = remaining[r][s] || 0;
+      numR += ns; numRed += ns; perfRed += ns * (ns - 1);
+    });
+    ['spades', 'clubs'].forEach(s => {
+      let ns = remaining[r][s] || 0;
+      numR += ns; numBlack += ns; perfBlack += ns * (ns - 1);
+    });
+    totalPair += numR * (numR - 1);
+    colored += numRed * (numRed - 1) - perfRed + numBlack * (numBlack - 1) - perfBlack;
+    perfect += perfRed + perfBlack;
+  });
+  let mixed = totalPair - perfect - colored;
+  let num = perfect * pPerfect + colored * pColored + mixed * pMixed;
+  return num / denom - 1;
 }
 
-// =============================================================
-// 5. Public API (simplified for brevity)
-// =============================================================
-export function dealCard(card) {
-  addCard(card.value, card.suit);
-  updateCounts(card.value);
+function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flush:5}) {
+  let t = 0;
+  rankOrder.forEach(r => suits.forEach(s => t += remaining[r][s] || 0));
+  if (t < 5) return -1; // Guard for low counts
+  const denom = t * (t - 1) * (t - 2);
+  let pSuited3 = 0;
+  rankOrder.forEach(r => suits.forEach(s => {
+    let ns = remaining[r][s] || 0;
+    pSuited3 += ns * (ns - 1) * (ns - 2);
+  }));
+  let pSF = 0;
+  straightTriples.forEach(triple => suits.forEach(s => {
+    let p1 = remaining[triple[0]][s] || 0;
+    let p2 = remaining[triple[1]][s] || 0;
+    let p3 = remaining[triple[2]][s] || 0;
+    pSF += p1 * p2 * p3 * 6;
+  }));
+  let pThree = 0;
+  rankOrder.forEach(r => {
+    let nr = 0; suits.forEach(s => nr += remaining[r][s] || 0);
+    pThree += nr * (nr - 1) * (nr - 2);
+  });
+  let pRegThree = pThree - pSuited3;
+  let pTotStr = 0;
+  straightTriples.forEach(triple => {
+    let n1 = 0, n2 = 0, n3 = 0;
+    suits.forEach(s => {
+      n1 += remaining[triple[0]][s] || 0;
+      n2 += remaining[triple[1]][s] || 0;
+      n3 += remaining[triple[2]][s] || 0;
+    });
+    pTotStr += n1 * n2 * n3 * 6;
+  });
+  let pStr = pTotStr - pSF;
+  let pTotFlush = 0;
+  suits.forEach(s => {
+    let ns = 0; rankOrder.forEach(r => ns += remaining[r][s] || 0);
+    pTotFlush += ns * (ns - 1) * (ns - 2);
+  });
+  let pFlush = pTotFlush - pSF - pSuited3;
+  let totalWin = pSuited3 + pSF + pRegThree + pStr + pFlush;
+  let num = pSuited3 * pays.suited3 + pSF * pays.sf + pRegThree * pays.three + pStr * pays.str + pFlush * pays.flush;
+  return num / denom - 1;
 }
 
 function updateAll() {
+  // Guard against negative remaining counts
+  rankOrder.forEach(r => {
+    suits.forEach(s => {
+      if (remaining[r] && remaining[r][s] !== undefined) {
+        remaining[r][s] = Math.max(0, remaining[r][s]);
+      }
+    });
+  });
+
   // Aggregates
   let total_rem = 0;
   let rankTotals = rankOrder.map(r => {
@@ -397,11 +554,22 @@ function updateAll() {
     total_rem += tot;
     return tot;
   });
-  const decksLeft = total_rem / 52; // Removed 0.25 cap
-  const tcHiLo = counts.HiLo.rc / decksLeft;
-  const tcAPC  = counts.APC.rc  / decksLeft;
-  const tcZen = counts.Zen.rc / decksLeft;
+  const decksLeft = total_rem / 52;
+  let tcHiLo, tcAPC, tcZen;
+  if (decksLeft > 0.01) {
+    tcHiLo = counts.HiLo.rc / decksLeft;
+    tcAPC = counts.APC.rc / decksLeft;
+    tcZen = counts.Zen.rc / decksLeft;
+  } else {
+    tcHiLo = 0;
+    tcAPC = 0;
+    tcZen = 0;
+  }
   const pen = ((1 - total_rem / TOTAL_CARDS) * 100).toFixed(2); // Two decimal places
+
+  // Dynamic acesLeft
+  acesLeft = 0;
+  suits.forEach(s => acesLeft += remaining['A'][s] || 0);
 
   document.getElementById('penetration').textContent = pen + '%';
   document.getElementById('decksLeft').textContent = decksLeft.toFixed(2);
@@ -427,10 +595,9 @@ function updateAll() {
   const dealerUp = hands.dealer[0]?.value;
   if (dealerUp === 'A' && !insuranceResolved) {
     let tensLeft = 0;
-    ['10','J','Q','K'].forEach(r => {
-      rankOrder.forEach(rank => { if (rank === r) suits.forEach(s => tensLeft += remaining[rank][s] || 0); });
-    });
-    const pBJ = total_rem > 1 ? tensLeft / (total_rem - 1) : 0.3077;
+    const tenRanks = ['10', 'J', 'Q', 'K'];
+    tenRanks.forEach(r => suits.forEach(s => tensLeft += remaining[r][s] || 0));
+    const pBJ = total_rem > 0 ? tensLeft / total_rem : 0.3077;
     let insEV = pBJ - 0.5 + RA_FACTOR * ra; // Use configurable RA factor
     const take = insEV > 0;
     document.getElementById('insAdvice').textContent = take ? `TAKE INSURANCE (+${(insEV*100).toFixed(1)}%)` : 'NO INSURANCE';
@@ -440,13 +607,26 @@ function updateAll() {
     document.getElementById('insuranceBox').style.display = 'none';
   }
 
+  // User-selectable tcEffective
+  let tcEffective;
+  switch (indexSystem) {
+    case 'Zen':
+      tcEffective = tcZen;
+      break;
+    case 'APC':
+      tcEffective = tcAPC;
+      break;
+    default:
+      tcEffective = tcHiLo;
+      break;
+  }
+
   // Kelly Ramp or Original Mikki Ramp
   const bankroll = parseFloat(document.getElementById('bankroll').value) || 10000;
   const betUnit = parseFloat(document.getElementById('betUnit').value) || 25; // Fallback to default
   const mikkiMultiplier = parseFloat(document.getElementById('mikkiMultiplier').value) || 3; // New configurable input
   let units, betDollar;
 
-  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen, tcAPC); // Include APC
   if (useKelly) {
     const edge = EDGE_PER_TC * Math.max(0, tcEffective) * (1 + RA_FACTOR * ra); // Use configurable RA factor
     const fullKelly = edge / VAR;
@@ -464,9 +644,11 @@ function updateAll() {
   let heatLevel = 'Cool';
   let heatColor = '#94a3b8';
   if (useHeatSim) {
-    const heat = 1 + (VAR / VAR) * (1 - Math.abs(tcEffective)); // Simplified variance-based
+    let heat = 1 + (1 - Math.abs(tcEffective)); // Simplified variance-based
+    heat = Math.max(0.5, Math.min(2, heat));
     const variance = Math.random() * 0.6 + 0.7;
     units = Math.floor(units * heat * variance);
+    units = Math.min(units, Math.floor(bankroll / betUnit)); // Re-cap after adjustment
     betDollar = units * betUnit;
     heatLevel = heat < 0.8 ? 'Cool' : heat < 0.95 ? 'Warm' : 'Hot';
     heatColor = heat < 0.8 ? '#3b82f6' : heat < 0.95 ? '#f59e0b' : '#ef4444';
@@ -647,7 +829,19 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
   while (total > 21 && aces) { total -= 10; aces--; }
   const soft = aces > 0 && !isPair;
 
-  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen, tcAPC); // Include APC
+  // User-selectable tcEffective
+  let tcEffective;
+  switch (indexSystem) {
+    case 'Zen':
+      tcEffective = tcZen;
+      break;
+    case 'APC':
+      tcEffective = tcAPC;
+      break;
+    default:
+      tcEffective = tcHiLo;
+      break;
+  }
 
   let key = null;
   if (isPair) {
@@ -683,7 +877,11 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
 
   if (soft) {
     if (total <= 17) return `<span class="adv-hit">HIT</span>${label}`;
-    if (total === 18) return dNum <= 8 ? `<span class="adv-double">DOUBLE</span>${label}` : dNum <= 8 ? `<span class="adv-stand">STAND</span>${label}` : `<span class="adv-hit">HIT</span>${label}`; // Fixed soft 18
+    if (total === 18) {
+      if (dNum >= 3 && dNum <= 6) return `<span class="adv-double">DOUBLE</span>${label}`;
+      else if (dNum === 2 || dNum === 7 || dNum === 8) return `<span class="adv-stand">STAND</span>${label}`;
+      else return `<span class="adv-hit">HIT</span>${label}`;
+    }
     return `<span class="adv-stand">STAND</span>${label}`;
   }
 
@@ -696,6 +894,24 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
   return `<span class="adv-stand">STAND</span>${label}`;
 }
 
-initRemaining();
+// Build rank buttons
+rankOrder.forEach(c => {
+  const b = document.createElement('button');
+  b.textContent = c;
+  b.className = 'card-btn';
+  b.onclick = () => addCard(c);
+  document.getElementById('cardsGrid').appendChild(b);
+});
 
-/* End of updated script.js */
+// Build suit buttons
+['spades','clubs','diamonds','hearts'].forEach(s => {  // Order for black then red
+  const b = document.createElement('button');
+  b.className = `suit-btn card-btn ${s}`;
+  b.textContent = symMap[s];
+  b.onclick = () => setSuit(s);
+  document.getElementById('suitGrid').appendChild(b);
+});
+
+initRemaining();
+buildTable();
+updateAll();
