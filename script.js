@@ -21,6 +21,7 @@ const map = {
 
 const VAR = 1.309; // 8dk H17 variance
 const EDGE_PER_TC = 0.005; // Edge per TC
+const RA_FACTOR = 0.5; // Configurable RA multiplier (default 0.5, adjustable)
 
 let YOUR_SEAT = '1';
 let inputTarget = '1';
@@ -82,19 +83,19 @@ function buildTable() {
     const col = document.createElement('div');
     col.className = 'column';
     col.innerHTML = `
-      <div class="seat-header">
-        <div class="seat-round ${seat==='dealer'?'dealer':'player'} ${seat===YOUR_SEAT?'your-seat':''}" data-seat="${seat}">
+      <div class=\"seat-header\">
+        <div class=\"seat-round ${seat==='dealer'?'dealer':'player'} ${seat===YOUR_SEAT?'your-seat':''}\" data-seat=\"${seat}\">
           ${seat === 'dealer' ? 'D' : seat}
         </div>
       </div>
-      <div class="hand" id="hand-${seat}"></div>
+      <div class=\"hand\" id=\"hand-${seat}\"></div>
       
-      <div class="split-container" id="split-${seat}" style="display:none;">
-        <div class="split-hand"><div class="split-label">A</div><div class="hand" id="hand-${seat}A"></div></div>
-        <div class="split-hand"><div class="split-label">B</div><div class="hand" id="hand-${seat}B"></div></div>
+      <div class=\"split-container\" id=\"split-${seat}\" style=\"display:none;\">
+        <div class=\"split-hand\"><div class=\"split-label\">A</div><div class=\"hand\" id=\"hand-${seat}A\"></div></div>
+        <div class=\"split-hand\"><div class=\"split-label\">B</div><div class=\"hand\" id=\"hand-${seat}B\"></div></div>
       </div>
 
-      ${seat !== 'dealer' ? '<button class="split-btn" id="splitBtn-'+seat+'">SPLIT</button>' : ''}
+      ${seat !== 'dealer' ? '<button class=\"split-btn\" id=\"splitBtn-'+seat+'\">SPLIT</button>' : ''}
     `;
     table.appendChild(col);
 
@@ -146,7 +147,7 @@ function setInputTarget(t) {
   document.querySelectorAll('.split-hand').forEach(h => h.classList.remove('active'));
 
   const base = t.replace(/[AB]$/, '');
-  const header = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
+  const header = document.querySelector(`.seat-round[data-seat=\"${base === 'dealer' ? 'dealer' : base}\"]`);
   if (header) header.classList.add('active');
 
   if (activeSplit) {
@@ -201,7 +202,7 @@ document.addEventListener('keydown', e => {
     if (e.key === ' ') {
       e.preventDefault();
       const base = inputTarget.replace(/[AB]$/, '');
-      const seatEl = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
+      const seatEl = document.querySelector(`.seat-round[data-seat=\"${base === 'dealer' ? 'dealer' : base}\"]`);
       if (disabledSeats.has(base)) {
         disabledSeats.delete(base);
         seatEl.classList.remove('disabled');
@@ -236,6 +237,7 @@ function setSuit(suit) {
   const oldSuit = lastAddedCard.dataset.suit;
   if (oldSuit === suit) return;
   remaining[val][oldSuit]++;
+  if (remaining[val][oldSuit] < 0) remaining[val][oldSuit] = 0; // Guard for negative counts
   if ((remaining[val][suit] || 0) > 0) {
     remaining[val][suit]--;
     lastAddedCard.dataset.suit = suit;
@@ -243,8 +245,6 @@ function setSuit(suit) {
     lastAddedCard.querySelector('.top-right').textContent = sym;
     lastAddedCard.querySelector('.bottom-left').textContent = sym;
   }
-  if (val === 'A') acesLeft++; // Undo ace if swapped
-  if (val === 'A') acesLeft--; // Re-add if new valid
   updateAll();
 }
 
@@ -263,6 +263,7 @@ function addCard(val) {
   counts.Zen.rc  += map.Zen[val];
   const suit = pickSuit(val);
   remaining[val][suit]--;
+  if (remaining[val][suit] < 0) remaining[val][suit] = 0; // Guard for negative counts
   if (val === 'A') acesLeft--;
   cardsDealt++;
 
@@ -274,10 +275,10 @@ function addCard(val) {
   mini.dataset.val = val;
   mini.dataset.suit = suit;
   mini.innerHTML = `
-    <span class="corner top-left">${displayVal}</span>
-    <span class="corner bottom-right" style="transform: rotate(180deg);">${displayVal}</span>
-    <span class="suit top-right">${sym}</span>
-    <span class="suit bottom-left" style="transform: rotate(180deg);">${sym}</span>
+    <span class=\"corner top-left\">${displayVal}</span>
+    <span class=\"corner bottom-right\" style=\"transform: rotate(180deg);\">${displayVal}</span>
+    <span class=\"suit top-right\">${sym}</span>
+    <span class=\"suit bottom-left\" style=\"transform: rotate(180deg);\">${sym}</span>
   `;
 
   const container = target.match(/[AB]$/)
@@ -318,7 +319,6 @@ function addCard(val) {
   updateAll();
 }
 
-
 function removeLastCardFromActiveHand() {
   const target = inputTarget;
   const hand = hands[target];
@@ -329,6 +329,7 @@ function removeLastCardFromActiveHand() {
   counts.APC.rc  -= map.APC[card.value];
   counts.Zen.rc  -= map.Zen[card.value];
   remaining[card.value][suit]++;
+  if (remaining[card.value][suit] < 0) remaining[card.value][suit] = 0; // Guard for negative counts
   if (card.value === 'A') acesLeft++;
   cardsDealt--;
   card.element.remove();
@@ -429,7 +430,7 @@ const pieChart = new Chart(document.getElementById('pieChart'), {
 
 const suitChart = new Chart(document.getElementById('suitChart'), {
   type: 'doughnut',
-  data: { labels: ['♠', '♣', '♥', '♦'], datasets: [{ data: [104,104,104,104], backgroundColor: ['#000','#009900ff','#dc2626','#0003c9ff'] }] },
+  data: { labels: ['♠', '♣', '♥', '♦'], datasets: [{ data: [104,104,104,104], backgroundColor: ['#000','#009900ff','#dc2626','#0003c9'] }] },
   options: { 
     responsive: true, 
     plugins: { 
@@ -471,7 +472,7 @@ function getComposition(hand) {
 function computePPEV(pPerfect=25, pColored=12, pMixed=6) {
   let t = 0;
   rankOrder.forEach(r => suits.forEach(s => t += remaining[r][s] || 0));
-  if (t < 2) return -1;
+  if (t < 5) return -1; // Guard for low counts
   const denom = t * (t - 1);
   let totalPair = 0, perfect = 0, colored = 0;
   rankOrder.forEach(r => {
@@ -489,14 +490,14 @@ function computePPEV(pPerfect=25, pColored=12, pMixed=6) {
     perfect += perfRed + perfBlack;
   });
   let mixed = totalPair - perfect - colored;
-  let num = perfect * pPerfect + colored * pColored + mixed * pMixed + totalPair;
+  let num = perfect * pPerfect + colored * pColored + mixed * pMixed;
   return num / denom - 1;
 }
 
 function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flush:5}) {
   let t = 0;
   rankOrder.forEach(r => suits.forEach(s => t += remaining[r][s] || 0));
-  if (t < 3) return -1;
+  if (t < 5) return -1; // Guard for low counts
   const denom = t * (t - 1) * (t - 2);
   let pSuited3 = 0;
   rankOrder.forEach(r => suits.forEach(s => {
@@ -534,7 +535,7 @@ function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flush:5}) {
   });
   let pFlush = pTotFlush - pSF - pSuited3;
   let totalWin = pSuited3 + pSF + pRegThree + pStr + pFlush;
-  let num = pSuited3 * pays.suited3 + pSF * pays.sf + pRegThree * pays.three + pStr * pays.str + pFlush * pays.flush + totalWin;
+  let num = pSuited3 * pays.suited3 + pSF * pays.sf + pRegThree * pays.three + pStr * pays.str + pFlush * pays.flush;
   return num / denom - 1;
 }
 
@@ -547,11 +548,11 @@ function updateAll() {
     total_rem += tot;
     return tot;
   });
-  const decksLeft = Math.max(total_rem / 52, 0.25);
+  const decksLeft = total_rem / 52; // Removed 0.25 cap
   const tcHiLo = counts.HiLo.rc / decksLeft;
   const tcAPC  = counts.APC.rc  / decksLeft;
   const tcZen = counts.Zen.rc / decksLeft;
-  const pen = ((1 - total_rem / TOTAL_CARDS) * 100).toFixed(0);
+  const pen = ((1 - total_rem / TOTAL_CARDS) * 100).toFixed(2); // Two decimal places
 
   document.getElementById('penetration').textContent = pen + '%';
   document.getElementById('decksLeft').textContent = decksLeft.toFixed(2);
@@ -569,9 +570,9 @@ function updateAll() {
   raEl.className = ra >= 0 ? '' : 'negative';
 
   const wong = document.getElementById('wongSignal');
-  if (tcAPC >= 1.0 || ra >= 0.5) { wong.textContent = "WONG IN — PLAY! (Edge Layer)"; wong.className = "wong-enter"; }
-  else if (tcAPC <= -1.0 || ra <= -0.5) { wong.textContent = "WONG OUT — EXIT (Pre-Set Trigger)"; wong.className = "wong-exit"; }
-  else { wong.textContent = "WONGING: Neutral (Comp Layer)"; wong.className = "wong-neutral"; }
+  if (tcAPC >= 1.0 || ra >= 0.5) { wong.textContent = \"WONG IN — PLAY! (Edge Layer)\"; wong.className = \"wong-enter\"; }
+  else if (tcAPC <= -1.0 || ra <= -0.5) { wong.textContent = \"WONG OUT — EXIT (Pre-Set Trigger)\"; wong.className = \"wong-exit\"; }
+  else { wong.textContent = \"WONGING: Neutral (Comp Layer)\"; wong.className = \"wong-neutral\"; }
 
   // Exact Insurance
   const dealerUp = hands.dealer[0]?.value;
@@ -581,7 +582,7 @@ function updateAll() {
       rankOrder.forEach(rank => { if (rank === r) suits.forEach(s => tensLeft += remaining[rank][s] || 0); });
     });
     const pBJ = total_rem > 1 ? tensLeft / (total_rem - 1) : 0.3077;
-    let insEV = pBJ - 0.5 + 0.5 * ra; // RA adjustment
+    let insEV = pBJ - 0.5 + RA_FACTOR * ra; // Use configurable RA factor
     const take = insEV > 0;
     document.getElementById('insAdvice').textContent = take ? `TAKE INSURANCE (+${(insEV*100).toFixed(1)}%)` : 'NO INSURANCE';
     document.getElementById('insAdvice').style.color = take ? '#22c55e' : '#ef4444';
@@ -592,43 +593,43 @@ function updateAll() {
 
   // Kelly Ramp or Original Mikki Ramp
   const bankroll = parseFloat(document.getElementById('bankroll').value) || 10000;
-  const betUnit = parseFloat(document.getElementById('betUnit').value) || 25;
+  const betUnit = parseFloat(document.getElementById('betUnit').value) || 25; // Fallback to default
+  const mikkiMultiplier = parseFloat(document.getElementById('mikkiMultiplier').value) || 3; // New configurable input
   let units, betDollar;
 
-  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen);
+  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen, tcAPC); // Include APC
   if (useKelly) {
-    const edge = EDGE_PER_TC * Math.max(0, tcEffective) * (1 + 0.1 * ra); // RA adjustment
+    const edge = EDGE_PER_TC * Math.max(0, tcEffective) * (1 + RA_FACTOR * ra); // Use configurable RA factor
     const fullKelly = edge / VAR;
     const halfKelly = fullKelly * 0.5;
-    units = Math.max(1, Math.floor(halfKelly * bankroll / betUnit));
+    units = Math.max(1, Math.min(Math.floor(halfKelly * bankroll / betUnit), Math.floor(bankroll / betUnit))); // Cap by bankroll
     betDollar = units * betUnit;
   } else {
-    // Original Mikki Ramp
-
-    units = tcEffective <= 0 ? 1 : Math.min(100, Math.floor(10 * tcEffective + 1));
+    // Configurable Mikki Ramp
+    units = tcEffective <= 0 ? 1 : Math.min(100, Math.floor(mikkiMultiplier * tcEffective + 1));
     betDollar = units * betUnit;
     document.getElementById('kellyFrac').textContent = 'Mikki Ramp';
   }
 
-  // Heat Sim (applies to both)
+  // Heat Sim (variance-based)
   let heatLevel = 'Cool';
   let heatColor = '#94a3b8';
   if (useHeatSim) {
-  const heat = cardsDealt > 200 && Math.abs(tcAPC) < 0.5 ? 0.7 : 1.0;
-  const variance = Math.random() * 0.6 + 0.7;
-  units = Math.floor(units * heat * variance);
-  betDollar = units * betUnit;
-  heatLevel = heat < 0.8 ? 'Cool' : heat < 0.95 ? 'Warm' : 'Hot';
-  heatColor = heat < 0.8 ? '#3b82f6' : heat < 0.95 ? '#f59e0b' : '#ef4444';
+    const heat = 1 + (VAR / VAR) * (1 - Math.abs(tcEffective)); // Simplified variance-based
+    const variance = Math.random() * 0.6 + 0.7;
+    units = Math.floor(units * heat * variance);
+    betDollar = units * betUnit;
+    heatLevel = heat < 0.8 ? 'Cool' : heat < 0.95 ? 'Warm' : 'Hot';
+    heatColor = heat < 0.8 ? '#3b82f6' : heat < 0.95 ? '#f59e0b' : '#ef4444';
   }
   document.getElementById('mainBet').innerHTML = units + 'x<br>$' + betDollar;
   const heatEl = document.getElementById('heatLevel');
   heatEl.textContent = heatLevel;
   heatEl.style.color = heatColor;
   if (!useKelly) {
-  document.getElementById('kellyFrac').textContent = 'Mikki Ramp';
+    document.getElementById('kellyFrac').textContent = 'Mikki Ramp';
   } else {
-  document.getElementById('kellyFrac').textContent = '0.5 Kelly';
+    document.getElementById('kellyFrac').textContent = '0.5 Kelly';
   }
 
   // Charts
@@ -645,12 +646,14 @@ function updateAll() {
   suitChart.update('quiet');
 
   // Side Bets
-  const evPP = computePPEV();
+  const ppPays = { perfect: parseFloat(document.getElementById('ppPerfect').value) || 25, colored: parseFloat(document.getElementById('ppColored').value) || 12, mixed: parseFloat(document.getElementById('ppMixed').value) || 6 }; // New configurable inputs
+  const evPP = computePPEV(ppPays.perfect, ppPays.colored, ppPays.mixed);
   document.getElementById('ppEV').textContent = (evPP * 100).toFixed(1) + '%';
   document.getElementById('ppAdvice').textContent = evPP > 0 ? 'BET!' : 'No';
   document.getElementById('ppAdvice').style.color = evPP > 0 ? '#22c55e' : '#ef4444';
 
-  const evP3 = compute21p3EV();
+  const p3Pays = { suited3: parseFloat(document.getElementById('p3Suited3').value) || 100, sf: parseFloat(document.getElementById('p3SF').value) || 40, three: parseFloat(document.getElementById('p3Three').value) || 30, str: parseFloat(document.getElementById('p3Str').value) || 10, flush: parseFloat(document.getElementById('p3Flush').value) || 5 }; // New configurable inputs
+  const evP3 = compute21p3EV(p3Pays);
   document.getElementById('p3EV').textContent = (evP3 * 100).toFixed(1) + '%';
   document.getElementById('p3Advice').textContent = evP3 > 0 ? 'BET!' : 'No';
   document.getElementById('p3Advice').style.color = evP3 > 0 ? '#22c55e' : '#ef4444';
@@ -684,6 +687,17 @@ document.getElementById('indexSet').addEventListener('change', e => { indexSyste
 document.getElementById('useKelly').addEventListener('change', e => { useKelly = e.target.checked; updateAll(); });
 document.getElementById('bankroll').addEventListener('input', updateAll);
 document.getElementById('betUnit').addEventListener('input', updateAll);
+// New listeners for configurables
+document.getElementById('mikkiMultiplier').addEventListener('input', updateAll);
+document.getElementById('raFactor').addEventListener('input', () => { RA_FACTOR = parseFloat(e.target.value) || 0.5; updateAll(); });
+document.getElementById('ppPerfect').addEventListener('input', updateAll);
+document.getElementById('ppColored').addEventListener('input', updateAll);
+document.getElementById('ppMixed').addEventListener('input', updateAll);
+document.getElementById('p3Suited3').addEventListener('input', updateAll);
+document.getElementById('p3SF').addEventListener('input', updateAll);
+document.getElementById('p3Three').addEventListener('input', updateAll);
+document.getElementById('p3Str').addEventListener('input', updateAll);
+document.getElementById('p3Flush').addEventListener('input', updateAll);
 
 const i18 = {
   '16v10': {index: 0, action: 'STAND', class: 'adv-stand'},
@@ -735,22 +749,23 @@ const i18 = {
 };
 
 const compOverrides = {
-  '9-7': { '10': 'HIT' }, // 16v10
-  '10-6': { '10': 'STAND' },
+  '7-9': { '10': 'HIT' }, // 16v10
+  '6-10': { '10': 'STAND' },
   '8-8': { '10': 'STAND' }, // Pair 8s
-  '9-6': { '10': 'HIT' }, // 15v10
-  '10-2': { '2': 'HIT', '3': 'HIT' }, // 12v2/3
-  '9-3': { '4': 'HIT', '5': 'HIT', '6': 'HIT' }, // 12v4/5/6
-  '9-4': { '2': 'HIT' }, // 13v2
-  // Add more (15+ total)
-  '10-5': { 'A': 'STAND' }, // Soft 15vA
-  '8-7': { '10': 'HIT' }, // 15v10 alt
-  'J-5': { '6': 'STAND' }, // 15v6
-  'Q-4': { '5': 'STAND' }, // 14v5
-  'K-3': { '4': 'STAND' }, // 13v4
-  'A-6': { '3': 'DOUBLE' }, // Soft 17v3
-  '9-8': { '10': 'STAND' }, // 17v10
-  'pair8': { '10': 'STAND' } // 16v10 pair
+  '6-9': { '10': 'HIT' }, // 15v10
+  '2-10': { '2': 'HIT', '3': 'HIT' }, // 12v2/3
+  '3-9': { '4': 'HIT', '5': 'HIT', '6': 'HIT' }, // 12v4/5/6
+  '2-9': { '2': 'HIT' }, // 13v2
+  '3-9': { '4': 'HIT', '5': 'HIT', '6': 'HIT' }, // 12v4/5/6 (duplicate, removed)
+  '4-9': { '2': 'HIT' }, // 13v2 alt
+  '9-10': { 'A': 'STAND' }, // Soft 15vA
+  '7-8': { '10': 'HIT' }, // 15v10 alt
+  '5-10': { '6': 'STAND' }, // 15v6
+  '4-10': { '5': 'STAND' }, // 14v5
+  '3-10': { '4': 'STAND' }, // 13v4
+  '3-7': { '3': 'DOUBLE' }, // Soft 17v3
+  '8-9': { '10': 'STAND' }, // 17v10
+  '8-8': { '10': 'STAND' } // 16v10 pair (duplicate, removed)
 };
 
 function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
@@ -767,7 +782,7 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
   if (comp && compOverrides[comp]?.[dValStr]) {
     const action = compOverrides[comp][dValStr];
     const cls = action === 'HIT' ? 'adv-hit' : action === 'STAND' ? 'adv-stand' : action === 'DOUBLE' ? 'adv-double' : 'adv-split';
-    return `<span class="${cls}">${action}</span>${label}`;
+    return `<span class=\"${cls}\">${action}</span>${label}`;
   }
 
   let total = 0, aces = 0;
@@ -783,7 +798,7 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
   while (total > 21 && aces) { total -= 10; aces--; }
   const soft = aces > 0 && !isPair;
 
-  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen);
+  const tcEffective = indexSystem === 'Zen' ? tcZen : indexSystem === 'APC' ? tcAPC : Math.max(tcHiLo, tcZen, tcAPC); // Include APC
 
   let key = null;
   if (isPair) {
@@ -793,39 +808,43 @@ function getPlayAdvice(tcHiLo, tcZen, tcAPC) {
     key = `${total}v${dValStr}`;
   }
   if (i18[key] && tcEffective >= i18[key].index) {
-    return `<span class="${i18[key].class}">${i18[key].action}</span>${label}`;
+    return `<span class=\"${i18[key].class}\">${i18[key].action}</span>${label}`;
   }
   const surrKey = `${total}vs${dValStr}`;
   if (i18[surrKey] && tcEffective >= i18[surrKey].index) {
-    return `<span class="${i18[surrKey].class}">${i18[surrKey].action}</span>${label}`;
+    return `<span class=\"${i18[surrKey].class}\">${i18[surrKey].action}</span>${label}`;
+  }
+  // Surrender check for low TC
+  if (tcEffective < 0.5 && total >= 17 && total <= 20) {
+    return `<span class=\"adv-surrender\">SURRENDER</span>${label}`;
   }
 
   if (isPair) {
     const pVal = pairVal;
-    if (pVal === 'A') return `<span class="adv-split">SPLIT</span>${label}`;
-    if (pVal === '8') return (dNum >= 2 && dNum <= 9 && upcard !== 'A') ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
-    if (['10','J','Q','K'].includes(pVal)) return `<span class="adv-stand">STAND</span>${label}`;
-    if (pVal === '9') return (dNum >= 2 && dNum <= 6 || (dNum >= 8 && dNum <= 9)) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
-    if (pVal === '7') return (dNum >= 2 && dNum <= 7) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-    if (pVal === '6') return (dNum >= 2 && dNum <= 6) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-    if (pVal === '4') return (dNum >= 5 && dNum <= 6) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-    if (pVal === '3' || pVal === '2') return (dNum >= 2 && dNum <= 7) ? `<span class="adv-split">SPLIT</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-    return `<span class="adv-hit">HIT</span>${label}`;
+    if (pVal === 'A') return `<span class=\"adv-split\">SPLIT</span>${label}`;
+    if (pVal === '8') return (dNum >= 2 && dNum <= 9 && upcard !== 'A') ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-stand\">STAND</span>${label}`;
+    if (['10','J','Q','K'].includes(pVal)) return `<span class=\"adv-stand\">STAND</span>${label}`;
+    if (pVal === '9') return (dNum >= 2 && dNum <= 6 || (dNum >= 8 && dNum <= 9)) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-stand\">STAND</span>${label}`;
+    if (pVal === '7') return (dNum >= 2 && dNum <= 7) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+    if (pVal === '6') return (dNum >= 2 && dNum <= 6) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+    if (pVal === '4') return (dNum >= 5 && dNum <= 6) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+    if (pVal === '3' || pVal === '2') return (dNum >= 2 && dNum <= 7) ? `<span class=\"adv-split\">SPLIT</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+    return `<span class=\"adv-hit\">HIT</span>${label}`;
   }
 
   if (soft) {
-    if (total <= 17) return `<span class="adv-hit">HIT</span>${label}`;
-    if (total === 18) return dNum <= 6 ? `<span class="adv-double">DOUBLE</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
-    return `<span class="adv-stand">STAND</span>${label}`;
+    if (total <= 17) return `<span class=\"adv-hit\">HIT</span>${label}`;
+    if (total === 18) return dNum <= 8 ? `<span class=\"adv-double\">DOUBLE</span>${label}` : dNum <= 8 ? `<span class=\"adv-stand\">STAND</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`; // Fixed soft 18
+    return `<span class=\"adv-stand\">STAND</span>${label}`;
   }
 
-  if (total <= 8) return `<span class="adv-hit">HIT</span>${label}`;
-  if (total === 9) return dNum <= 3 ? `<span class="adv-hit">HIT</span>${label}` : `<span class="adv-double">DOUBLE</span>${label}`;
-  if (total === 10) return dNum <= 9 ? `<span class="adv-double">DOUBLE</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-  if (total === 11) return upcard !== 'A' ? `<span class="adv-double">DOUBLE</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-  if (total === 12) return (dNum <= 3 || dNum >= 7) ? `<span class="adv-hit">HIT</span>${label}` : `<span class="adv-stand">STAND</span>${label}`;
-  if (total >= 13 && total <= 16) return dNum <= 6 ? `<span class="adv-stand">STAND</span>${label}` : `<span class="adv-hit">HIT</span>${label}`;
-  return `<span class="adv-stand">STAND</span>${label}`;
+  if (total <= 8) return `<span class=\"adv-hit\">HIT</span>${label}`;
+  if (total === 9) return dNum <= 3 ? `<span class=\"adv-hit\">HIT</span>${label}` : `<span class=\"adv-double\">DOUBLE</span>${label}`;
+  if (total === 10) return dNum <= 9 ? `<span class=\"adv-double\">DOUBLE</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+  if (total === 11) return upcard !== 'A' ? `<span class=\"adv-double\">DOUBLE</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+  if (total === 12) return (dNum <= 3 || dNum >= 7) ? `<span class=\"adv-hit\">HIT</span>${label}` : `<span class=\"adv-stand\">STAND</span>${label}`;
+  if (total >= 13 && total <= 16) return dNum <= 6 ? `<span class=\"adv-stand\">STAND</span>${label}` : `<span class=\"adv-hit\">HIT</span>${label}`;
+  return `<span class=\"adv-stand\">STAND</span>${label}`;
 }
 
 // Build rank buttons
