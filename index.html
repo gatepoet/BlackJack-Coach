@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <title>BJ Pro 2026 — Mikki Mase Edition: Face Cards & Suits Enhanced</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,7 +19,7 @@
       <label class="toggle-item"><input type="checkbox" id="heatSim" title="Stealth"> H</label>
       <label class="toggle-item"><input type="checkbox" id="useKelly" title="Kelly Ramp" checked> K</label>
       <select id="indexSet" class="toggle-select">
-        <option>Basic</option><option>Zen</option><option>APC</option>
+        <option>Basic</option><option>Zen</option><option>APC</option><option>Omega II</option>
       </select>
     </div>
   </div>
@@ -30,18 +29,7 @@
 
   <div class="table-container"><div class="table" id="table"></div></div>
 
-  <div id="insuranceBox">
-    <div id="insAdvice">TAKE INSURANCE</div>
-    <div>Hi-Lo TC: <span id="hiLoTC">+0.00</span></div>
-    <div class="ins-btns">
-      <button id="bjYes">DEALER BJ</button>
-      <button id="bjNo">NO BJ</button>
-    </div>
-  </div>
-
-  <div id="wongSignal" class="wong-neutral">WONGING: Neutral</div>
-
-  <div id="advice">Double-tap seat → Your Seat • ←→ to navigate</div>
+  <div id="advice" class="wong-neutral">Double-tap seat → Your Seat • ←→ to navigate</div> <!-- Added wong-neutral class -->
 
   <div id="masePrinciples">
     <strong>Mikki Mase's 7 Principles (Adapted for App):</strong>
@@ -62,27 +50,60 @@
       <div>Hi-Lo RC/TC: <span id="hiLoRC">0</span> / <span id="hiLoTC2">+0.00</span></div>
       <div>Uston APC TC: <span id="apcTC">+0.00</span></div>
       <div>Zen TC: <span id="zenTC">+0.00</span></div>
+      <div>Omega II TC: <span id="omegaIITC">+0.00</span></div>
+      <div>Ace TC: <span id="aceTC">0.00</span></div>
+      <span>RoR: <span id="ror">-2.9%</span>
     </div>
-    <div class="sidebets-inline">
-      <span>PP EV: <span id="ppEV">-4.1%</span> <span id="ppAdvice">No</span></span>
-      <span>21+3 EV: <span id="p3EV">-3.7%</span> <span id="p3Advice">No</span></span>
+    <div class="sidebets-inline"></span>
+      <span>PP EV: <span id="ppEV">-4.1%</span> <span id="ppAdvice">No</span> <span id="ppBet">No Bet</span>
+      <span>21+3 EV: <span id="p3EV">-3.7%</span> <span id="p3Advice">No</span> <span id="p3Bet">No Bet</span>
     </div>
   </div>
 
   <div class="bottom">
     <div class="betRamp">
-      <div class="bet-header">Spread: <span class="main" id="mainBet">SIT OUT</span> <span id="heatLevel">Cool</span></div>
+      <div class="bet-header"><span>Spread:<br /><span id="kellyFrac">0.5 Kelly</span></span><span class="main" id="mainBet">SIT OUT</span> <span id="heatLevel">Cool</span></div>
       <div class="bet-inputs">
-        <input id="bankroll" type="number" value="10000" min="1000" step="100" title="Bankroll ($)" style="width:80px;">
-        <input id="betUnit" type="number" value="25" min="5" step="5" title="Bet Unit ($)" style="width:60px;">
-        <span id="kellyFrac">0.5 Kelly</span>
+        <!-- Basic betting always visible -->
+        <div class="betting-inputs">
+          <input id="bankroll" type="number" value="10000" min="1000" step="100" title="Bankroll ($)" style="width:80px;">
+          <input id="betUnit" type="number" value="25" min="5" step="5" title="Bet Unit ($)" style="width:60px;">
+        </div>
+        
+        
+        <!-- Sidebets: Collapsible section -->
+        <input type="checkbox" id="toggleSidebets" class="toggle-checkbox">
+        <label for="toggleSidebets" id="sidebetLabel" class="toggle-label">Advanced Sidebets</label>
+        <!-- Multipliers: Always visible, compact -->
+        <div class="multiplier-inputs">
+          <input id="mikkiMultiplier" type="number" value="3" min="1" max="10" step="0.5" title="Mikki Multiplier" style="width:60px;">
+          <input id="raFactor" type="number" value="0.5" min="0" max="2" step="0.1" title="RA Factor" style="width:60px;">
+        </div>
+        <div class="sidebet-inputs" id="sidebetInputs">
+          <input id="ppPerfect" type="number" value="25" min="1" title="PP Perfect" style="width:50px;">
+          <input id="ppColored" type="number" value="12" min="1" title="PP Colored" style="width:50px;">
+          <input id="ppMixed" type="number" value="6" min="1" title="PP Mixed" style="width:50px;">
+          <input id="p3Suited3" type="number" value="100" min="1" title="21+3 Suited3" style="width:50px;">
+          <input id="p3SF" type="number" value="40" min="1" title="21+3 SF" style="width:50px;">
+          <input id="p3Three" type="number" value="30" min="1" title="21+3 Three" style="width:50px;">
+          <input id="p3Str" type="number" value="10" min="1" title="21+3 Str" style="width:50px;">
+          <input id="p3Flush" type="number" value="5" min="1" title="21+3 Flush" style="width:50px;">
+        </div>
       </div>
       <div class="ramp-note">Mikki High-Variance Ramp (1-100): Edge Layer on APC TC</div>
     </div>
     <div class="charts-grid">
-      <canvas id="pieChart"></canvas>
-      <canvas id="suitChart"></canvas>
+      <div id="combinedChart"></div> <!-- Changed to div for D3 SVG -->
     </div>
+  </div>
+</div>
+
+<div id="insuranceBox">
+  <div id="insAdvice">TAKE INSURANCE</div>
+  <div>Hi-Lo TC: <span id="hiLoTC">+0.00</span></div>
+  <div class="ins-btns">
+    <button id="bjYes">DEALER BJ</button>
+    <button id="bjNo">NO BJ</button>
   </div>
 </div>
 
