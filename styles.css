@@ -24,7 +24,7 @@ body{margin:0;background:#0d1117;color:#eee;font-family:system-ui,-apple-system,
 .suit-btn.hearts,.suit-btn.diamonds{background:#dc2626 !important;border-color:#dc2626 !important;color:#fff;}
 .card-btn:active{transform:scale(0.94);background:#2563eb;}
 
-.table-container{flex:1;overflow:hidden;position:relative;}
+.table-container{flex:1;overflow:hidden;position:relative;min-height:250px;}
 .table{flex:1;display:flex;gap:0;overflow-x:auto;padding-top:5px;height:100%}
 .column{flex:1;display:flex;flex-direction:column;gap:0;position:relative;}
 
@@ -38,10 +38,10 @@ body{margin:0;background:#0d1117;color:#eee;font-family:system-ui,-apple-system,
 .hand{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:-22px;padding:0px 4px 20px;background:#0d1117;}
 .mini{width:35px;height:46px;border-radius:8px;margin:0 auto -25px auto;flex-shrink:0;
   box-shadow:0 4px 12px #0008,inset 0 0 20px rgba(255,255,255,0.1);background:linear-gradient(135deg,#fff,#f0f0f0);border:2px solid #333;position:relative;}
-.mini .corner{position:absolute;font-size:0.83rem;font-weight:bold;}
+.mini .corner{position:absolute;font-weight:bold;}
 .mini .top-left{top:2px;left:3px;}
 .mini .bottom-right{bottom:2px;right:3px;transform:rotate(180deg);}
-.mini .suit{position:absolute;font-size:0.85rem;font-weight:bold;}
+.mini .suit{position:absolute;}
 .mini .top-right{top:0px;right:2px;}
 .mini .bottom-left{bottom:0px;left:2px;transform:rotate(180deg);}
 .mini[data-suit="hearts"],.mini[data-suit="diamonds"]{color:#dc2626;}
@@ -157,8 +157,8 @@ body{margin:0;background:#0d1117;color:#eee;font-family:system-ui,-apple-system,
   .hand-total{font-size:0.75rem;}
   .seat-round{width:40px;height:40px;font-size:0.8rem;}
   .mini{ width:28px;height:38px;margin:0 auto -20px auto;}
-  .mini .corner{font-size:0.75rem;}
-  .mini .suit{font-size:0.8rem;}
+  .mini .corner{}
+  .mini .suit{}
 }
 @media (max-width: 360px) {
   .sidebets-inline span{font-size:0.75rem;gap:2px;margin:0 4px;}
