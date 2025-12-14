@@ -527,21 +527,24 @@ function initCombinedChart() {
     .style('border-radius', '4px')
     .style('font-size', '12px')
     .style('pointer-events', 'none')
-    .style('z-index', '1000');
+    .style('z-index', '1000')
+    .style('display', 'none')
 
   // Center group (responsive)
   const centerGroup = svg.append('g')
     .attr('transform', `translate(${centerX}, ${centerY})`);
 
   function showTooltip(event, d, label, value) {
-    tooltip.transition().duration(200).style('opacity', .9);
     tooltip.html(`${label}: ${value}`)
-      .style('left', (event.pageX + 10) + 'px')
-      .style('top', (event.pageY - 28) + 'px');
+    .style('left', (event.pageX + 10) + 'px')
+    .style('top', (event.pageY - 28) + 'px');
+    tooltip.style('display', 'block')
+    tooltip.transition().duration(200).style('opacity', .9);
   }
 
   function hideTooltip() {
     tooltip.transition().duration(500).style('opacity', 0);
+    tooltip.style('display', 'none')
   }
 
   // Draw outer ring: Ranks

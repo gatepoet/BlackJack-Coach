@@ -24,7 +24,7 @@ body{margin:0;background:#0d1117;color:#eee;font-family:system-ui,-apple-system,
 .suit-btn.hearts,.suit-btn.diamonds{background:#dc2626 !important;border-color:#dc2626 !important;color:#fff;}
 .card-btn:active{transform:scale(0.94);background:#2563eb;}
 
-.table-container{flex:1;overflow:hidden;position:relative;min-height:250px;}
+.table-container{flex:1;overflow:hidden;position:relative;}
 .table{flex:1;display:flex;gap:0;overflow-x:auto;padding-top:5px;height:100%}
 .column{flex:1;display:flex;flex-direction:column;gap:0;position:relative;}
 
@@ -129,11 +129,12 @@ body{margin:0;background:#0d1117;color:#eee;font-family:system-ui,-apple-system,
 /* Media Queries: Enhanced balance for small screens */
 @media (max-width: 400px) {
   :root{font-size:13px;}
-  body{overflow-x:hidden;}
+  body, #app{height: auto;}
   .topbar{grid-template-columns:1fr;padding:8px;gap:8px;}
   #toggles{grid-column:1 / -1;justify-content:center;flex-wrap:wrap;display:grid;}
   .toggle-group{gap:6px;}
   .btn{max-width:none;flex:1;}
+  .table-container {  min-height:150px;}
   #infoBar{grid-template-columns:1fr;gap:6px;font-size:0.8rem;padding:8px;}
   .info-top{grid-template-columns:repeat(3,1fr);gap:4px;}
   .counts{margin:auto;}
