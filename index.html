@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>BJ Pro 2026 — Mikki Mase Edition: Face Cards & Suits Enhanced</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <link rel="stylesheet" href="styles.css">
@@ -12,16 +12,18 @@
 
 <div id="app">
   <div class="topbar">
-    <div class="btn next-hand" id="nextHandBtn">NEXT HAND</div>
     <div class="btn shuffle" id="shuffleBtn">NEW SHOE</div>
     <div id="toggles" class="toggle-group">
-      <label class="toggle-item"><input type="checkbox" id="compDep" title="Comp-Dep"> C</label>
-      <label class="toggle-item"><input type="checkbox" id="heatSim" title="Stealth"> H</label>
-      <label class="toggle-item"><input type="checkbox" id="useKelly" title="Kelly Ramp" checked> K</label>
+      <div class="toggle-items">
+        <label class="toggle-item"><input type="checkbox" id="compDep" title="Comp-Dep"> C</label>
+        <label class="toggle-item"><input type="checkbox" id="heatSim" title="Stealth"> H</label>
+        <label class="toggle-item"><input type="checkbox" id="useKelly" title="Kelly Ramp" checked> K</label>
+      </div>
       <select id="indexSet" class="toggle-select">
         <option>Basic</option><option>Zen</option><option>APC</option><option>Omega II</option>
       </select>
     </div>
+    <div class="btn next-hand" id="nextHandBtn">NEXT HAND</div>
   </div>
 
   <div class="rank-grid" id="cardsGrid"></div>
@@ -31,28 +33,18 @@
 
   <div id="advice" class="wong-neutral">Double-tap seat → Your Seat • ←→ to navigate</div> <!-- Added wong-neutral class -->
 
-  <div id="masePrinciples">
-    <strong>Mikki Mase's 7 Principles (Adapted for App):</strong>
-    <ul style="margin:5px 0;padding-left:15px;">
-      <li class="principle">1. Baseline: Basic Strategy + Deviations on Triggers (Deck Bias via Counts)</li>
-      <li class="principle">2. Mask Persona: Vary Bets to Appear Recreational</li>
-      <li class="principle">3. Bankroll Tiers: Edge Bets on High TC (APC-Driven)</li>
-      <li class="principle">4. Cascading: Fallback on Failed Deviations</li>
-      <li class="principle">5. Mirror Energy: (UI: Adapt to Shoe Heat)</li>
-      <li class="principle">6. Comp Extraction: Ramp for Avg Bet Inflation</li>
-      <li class="principle">7. Pre-Set Exit: Wong Out on -TC</li>
-    </ul>
-  </div>
-
   <div id="infoBar">
-    <div class="info-top">Penetration: <span id="penetration">0%</span> • Decks left: <span id="decksLeft">8.00</span> • RA: <span id="ra">+0.00</span></div>
+    <div class="info-top">
+      <div>Penetration: <span id="penetration">0%</span></div>
+      <div>Decks left: <span id="decksLeft">8.00</span></div>
+      <div>RA: <span id="ra">+0.00</span></div>
     <div class="counts">
       <div>Hi-Lo RC/TC: <span id="hiLoRC">0</span> / <span id="hiLoTC2">+0.00</span></div>
       <div>Uston APC TC: <span id="apcTC">+0.00</span></div>
       <div>Zen TC: <span id="zenTC">+0.00</span></div>
       <div>Omega II TC: <span id="omegaIITC">+0.00</span></div>
-      <div>Ace TC: <span id="aceTC">0.00</span></div>
-      <span>RoR: <span id="ror">-2.9%</span>
+      <div>Ace TC: <span id="aceTC">+0.00</span></div>
+      <div>RoR: <span id="ror">0.00%</span></div>
     </div>
     <div class="sidebets-inline"></span>
       <span>PP EV: <span id="ppEV">-4.1%</span> <span id="ppAdvice">No</span> <span id="ppBet">No Bet</span>
@@ -90,7 +82,6 @@
           <input id="p3Flush" type="number" value="5" min="1" title="21+3 Flush" style="width:50px;">
         </div>
       </div>
-      <div class="ramp-note">Mikki High-Variance Ramp (1-100): Edge Layer on APC TC</div>
     </div>
     <div class="charts-grid">
       <div id="combinedChart"></div> <!-- Changed to div for D3 SVG -->
