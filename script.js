@@ -318,9 +318,9 @@ function addCard(val) {
   mini.dataset.suit = suit;
   mini.innerHTML = `
     <span class="corner top-left">${displayVal}</span>
-    <span class="corner bottom-right" style="transform: rotate(180deg);">${displayVal}</span>
+    <span class="corner bottom-right"">${displayVal}</span>
     <span class="suit top-right">${sym}</span>
-    <span class="suit bottom-left" style="transform: rotate(180deg);">${sym}</span>
+    <span class="suit bottom-left">${sym}</span>
   `;
 
   let addBase = target.replace(/[AB]$/, '');
@@ -448,7 +448,15 @@ document.getElementById('shuffleBtn').onclick = () => {
   updateAll();
 };
 
-document.getElementById('bjYes').onclick = () => { if (!insuranceResolved) addCard('10'); insuranceResolved = true; updateAll(); document.getElementById('insuranceBox').style.display = 'none'; };
+document.getElementById('bjYes').onclick = () => {
+  if (!insuranceResolved) {
+    setInputTarget('dealer');
+    addCard('10');
+  }
+  insuranceResolved = true;
+  updateAll();
+  document.getElementById('insuranceBox').style.display = 'none';
+};
 document.getElementById('bjNo').onclick = () => {
   insuranceResolved = true;
   document.getElementById('insuranceBox').style.display = 'none';
