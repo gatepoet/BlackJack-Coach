@@ -108,8 +108,37 @@ function buildTable() {
     if (seat !== 'dealer') splitButtons[seat] = col.querySelector('#splitBtn-'+seat);
 
     const header = col.querySelector('.seat-round');
-    header.addEventListener('dblclick', (e) => { e.stopPropagation(); YOUR_SEAT = seat; document.querySelectorAll('.your-seat').forEach(x=>x.classList.remove('your-seat')); header.classList.add('your-seat'); });
-    header.addEventListener('click', () => setInputTarget(seat));
+    header.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      disableSeat(seat);
+    });
+    
+    let clickTimeout;
+    const clickDelay = 300; // delay duration
+
+    function doubleClick(e) {
+      clearTimeout(clickTimeout);
+      e.stopPropagation();
+      YOUR_SEAT = seat;
+      document.querySelectorAll('.your-seat').forEach(x=>x.classList.remove('your-seat'));
+      header.classList.add('your-seat');
+    }
+    let lastTap;
+    header.addEventListener('touchend', function(e) {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+
+      if (tapLength < clickDelay && tapLength > 0) {
+          doubleClick(e);
+      }
+      lastTap = currentTime;
+    });
+    header.addEventListener('dblclick', doubleClick);
+    header.addEventListener('click', () => {
+      clickTimeout = setTimeout(function() {
+        setInputTarget(seat)
+      }, clickDelay);
+    });
 
     new Sortable(handContainers[seat], { group: 'cards', animation: 150, onEnd: updateAll });
   });
@@ -189,6 +218,20 @@ function moveRight(base, currentIdx) {
   setInputTarget(candidate);
 }
 
+function disableSeat(seat) {
+  const base = seat.replace(/[AB]$/, '');
+  const seatEl = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
+  if (disabledSeats.has(base)) {
+    disabledSeats.delete(base);
+    seatEl.classList.remove('disabled');
+  } else {
+    disabledSeats.add(base);
+    seatEl.classList.add('disabled');
+  }
+  const currentIdx = order.indexOf(base);
+  moveLeft(base, currentIdx);
+}
+  
 document.addEventListener('keydown', e => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
     const c = keyMap[e.key];
@@ -198,23 +241,13 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Backspace') { e.preventDefault(); removeLastCardFromActiveHand(); return; }
     if (e.key === ' ') {
       e.preventDefault();
-      const base = inputTarget.replace(/[AB]$/, '');
-      const seatEl = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
-      if (disabledSeats.has(base)) {
-        disabledSeats.delete(base);
-        seatEl.classList.remove('disabled');
-      } else {
-        disabledSeats.add(base);
-        seatEl.classList.add('disabled');
-      }
-      const currentIdx = order.indexOf(base);
-      moveLeft(base, currentIdx);
+      disableSeat(inputTarget)
       return;
     }
     return;
   }
   e.preventDefault();
-
+  
   let base = inputTarget.replace(/[AB]$/, '');
   let currentIdx = order.indexOf(base);
 
@@ -225,7 +258,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-const keyMap = {1:'A',a:'A',A:'A',2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',0:'10',t:'10',T:'10','o':'J','p':'Q','[':'K'};
+const keyMap = {1:'A',a:'A',A:'A',2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',0:'10',t:'10',T:'10','o':'J','p':'Q','[':'K','å':'K','Å':'K','/':'J','*':'Q','-':'K'};
 
 function setSuit(newSuit) {
   if (!lastAddedCard) return;
@@ -886,13 +919,13 @@ function updateAll() {
 
   // === DISPLAY ===
   document.getElementById('mainBet').innerHTML = 
-    `${finalUnits}x — $${betDollar.toLocaleString()}`;
+    `${finalUnits}x ($${betDollar.toLocaleString()})`;
 
   const heatEl = document.getElementById('heatLevel');
   heatEl.textContent = heatLevel;
   heatEl.style.color = heatColor;
   // Consolidated kellyFrac
-  document.getElementById('kellyFrac').textContent = useKelly ? '0.5 Kelly' : indexSystem === 'Omega II' ? 'Omega II Ramp' : 'Mikki Ramp';
+  document.getElementById('kellyFrac').textContent = useKelly ? '0.5 Kelly' : indexSystem === 'Omega II' ? 'Omega II' : 'Basic';
 
   const suitOrder = ['spades', 'clubs', 'hearts', 'diamonds'];
   let suitTotals = { spades: 0, clubs: 0, hearts: 0, diamonds: 0 };
@@ -933,8 +966,7 @@ function updateAll() {
     const container = document.getElementById(`hand-${target}`) || handContainers[baseTarget];
     let totalEl = container.querySelector('.hand-total');
     const {total, bust, soft} = computeTotal(hands[target]);
-    const status = bust ? '(BUST)' : soft ? '(Soft)' : '';
-    const color = bust ? '#ef4444' : total >=17 ? '#22c55e' : '#ffd43f';
+    const color = bust ? '#ef4444' : total===21 ? 'rgb(0 255 245)' : total >=17 ? '#22c55e' : '#ffd43f';
     if (!totalEl) {
       totalEl = document.createElement('div');
       totalEl.className = 'hand-total';
@@ -942,7 +974,7 @@ function updateAll() {
       container.insertAdjacentElement('afterbegin', totalEl);
     }
     totalEl.style.color = color;
-    totalEl.textContent = `Total: ${total} ${status}`;
+    totalEl.textContent = `Total: ${total}`;
   });
   document.getElementById('advice').innerHTML = getPlayAdvice(tcHiLo, tcZen, tcAPC, tcOmegaII);
 }
@@ -1081,7 +1113,7 @@ const i18 = {
 function getPlayAdvice(tcHiLo, tcZen, tcAPC, tcOmegaII) {
   const dealerCard = hands.dealer[0]?.value || null;
   const hand = activeSplit ? hands[activeSplit] : hands[YOUR_SEAT];
-  if (!dealerCard || !hand || hand.length < 2) return 'Waiting for your hand…';
+  if (!dealerCard || !hand || hand.length < 2) return 'Waiting for your hand...'
   const label = activeSplit ? ` Split ${activeSplit.slice(-1)}` : '';
   const upcard = dealerCard;
   const dValStr = (['10','J','Q','K'].includes(upcard) ? '10' : upcard);
