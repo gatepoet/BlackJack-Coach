@@ -140,8 +140,12 @@ function buildTable() {
       }, clickDelay);
     });
 
-    new Sortable(handContainers[seat], { group: 'cards', animation: 150, onEnd: updateAll });
+    new Sortable(handContainers[seat], { group: 'cards', animation: 150, onMove: moveCard });
   });
+}
+
+function moveCard(event, originalEvent) {
+  console.info(event, originalEvent)
 }
 
 function setInputTarget(t) {
@@ -420,8 +424,8 @@ document.getElementById('nextHandBtn').onclick = () => {
   document.getElementById('insuranceBox').style.display = 'none';
   insuranceResolved = false;
   activeSplit = null;
-  disabledSeats.clear();
-  document.querySelectorAll('.seat-round').forEach(el => el.classList.remove('disabled'));
+  // disabledSeats.clear();
+  // document.querySelectorAll('.seat-round').forEach(el => el.classList.remove('disabled'));
   document.querySelectorAll('.hand-total').forEach(el => el.remove()); // Added to clear totals
   lastAddedCard = null;
   setInputTarget('1');
