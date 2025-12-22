@@ -3,52 +3,55 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 const SHOE_DECKS = 8;
 const TOTAL_CARDS = SHOE_DECKS * 52;
 const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
-let remaining = {};
-let acesLeft = 0;
-let aceRC = 0;                  // Ace side-count
-let cardsDealt = 0;
-let insuranceResolved = false;
-let lastAddedCard = null;
 
-const map = {
-  HiLo: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1},
-  APC:  {'A':0,'2':1,'3':1,'4':2,'5':3,'6':2,'7':2,'8':1,'9':-3,'10':-4},
-  Zen: {'A':-1,'2':1,'3':1,'4':2,'5':2,'6':2,'7':1,'8':0,'9':0,'10':-2},
-  OmegaII: {'A':-2,'2':1,'3':1,'4':2,'5':3,'6':2,'7':1,'8':-1,'9':-1,'10':-2}
+// Single state object to hold all mutable data
+const state = {
+  remaining: {},
+  state.acesLeft: 0,
+  aceRC: 0,                  // Ace side-count
+  cardsDealt: 0,
+  insuranceResolved: false,
+  lastAddedCard: null,
+  counts: { HiLo: { rc: 0 }, APC: { rc: 0 }, Zen: { rc: 0 }, OmegaII: { rc: 0 } },
+  map: {
+    HiLo: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1},
+    APC:  {'A':0,'2':1,'3':1,'4':2,'5':3,'6':2,'7':2,'8':1,'9':-3,'10':-4},
+    Zen: {'A':-1,'2':1,'3':1,'4':2,'5':2,'6':2,'7':1,'8':0,'9':0,'10':-2},
+    OmegaII: {'A':-2,'2':1,'3':1,'4':2,'5':3,'6':2,'7':1,'8':-1,'9':-1,'10':-2}
+  },
+  YOUR_SEAT: '1',
+  inputTarget: '1',
+  activeSplit: null,
+  disabledSeats: new Set(),
+  useCompDep: false,
+  useHeatSim: false,
+  indexSystem: 'Basic',
+  useKelly: true,
+  hands: { dealer: [] },
+  handContainers: {},
+  splitContainers: {},
+  splitButtons: {},
+  rankOrder: ['A','2','3','4','5','6','7','8','9','10','J','Q','K'],
+  suitMap: {'s':'spades','d':'diamonds','x':'hearts','c':'clubs'},
+  symMap: {'spades':'♠','hearts':'♥','diamonds':'♦','clubs':'♣'},
+  straightTriples: [
+    ['A','2','3'],['2','3','4'],['3','4','5'],['4','5','6'],['5','6','7'],
+    ['6','7','8'],['7','8','9'],['8','9','10'],['9','10','J'],['10','J','Q'],
+    ['J','Q','K'],['Q','K','A']
+  ],
+  order: ['dealer', '7', '6', '5', '4', '3', '2', '1']
 };
-['J','Q','K'].forEach(face => {
-  for (let sys in map) map[sys][face] = map[sys]['10'];
-});
 
-const counts = { HiLo: { rc: 0 }, APC: { rc: 0 }, Zen: { rc: 0 }, OmegaII: { rc: 0 } };
-
-const VAR = 1.309;
-const EDGE_PER_TC = 0.005;
-let RA_FACTOR = 0.5;
-
-let YOUR_SEAT = '1';
-let inputTarget = '1';
-let activeSplit = null;
-let disabledSeats = new Set();
-let useCompDep = false;
-let useHeatSim = false;
-let indexSystem = 'Basic';
-let useKelly = true;
-const hands = { dealer: [] };
-for (let i = 1; i <= 7; i++) hands[i] = [];
-const handContainers = {};
-const splitContainers = {};
-const splitButtons = {};
-
-const rankOrder = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-const suitMap = {'s':'spades','d':'diamonds','x':'hearts','c':'clubs'};
-const symMap = {'spades':'♠','hearts':'♥','diamonds':'♦','clubs':'♣'};
-const straightTriples = [
-  ['A','2','3'],['2','3','4'],['3','4','5'],['4','5','6'],['5','6','7'],
-  ['6','7','8'],['7','8','9'],['8','9','10'],['9','10','J'],['10','J','Q'],
-  ['J','Q','K'],['Q','K','A']
-];
-const order = ['dealer', '7', '6', '5', '4', '3', '2', '1'];
+// Helper to initialize the state.remaining counts for a fresh shoe
+function initRemaining() {
+  state.state.remaining = {};
+  state.rankOrder.forEach(rank => {
+    state.state.remaining[rank] = {};
+    suits.forEach(suit => state.state.remaining[rank][suit] = 8);
+  });
+  state.state.acesLeft = 0;
+  state.aceRC = 0;
+}
 
 function getFirstPlayingSeat() {
   for (let seat = 1; seat <= 7; seat++) {
@@ -59,22 +62,22 @@ function getFirstPlayingSeat() {
 }
 
 function initRemaining() {
-  remaining = {};
+  state.remaining = {};
   rankOrder.forEach(rank => {
-    remaining[rank] = {};
-    suits.forEach(suit => remaining[rank][suit] = 8);
+    state.remaining[rank] = {};
+    suits.forEach(suit => state.remaining[rank][suit] = 8);
   });
-  acesLeft = 0;
+  state.acesLeft = 0;
   aceRC = 0;
 }
 
 function pickSuit(rank) {
   let total = 0;
-  suits.forEach(s => total += remaining[rank][s] || 0);
+  suits.forEach(s => total += state.remaining[rank][s] || 0);
   if (total === 0) return suits[0];
   let rand = Math.random() * total;
   for (let suit of suits) {
-    rand -= remaining[rank][suit] || 0;
+    rand -= state.remaining[rank][suit] || 0;
     if (rand <= 0) return suit;
   }
   return suits[0];
@@ -273,15 +276,15 @@ function setSuit(newSuit) {
   if (oldSuit === newSuit) return;
 
   // Check if we can take a card from the new suit
-  if ((remaining[val][newSuit] || 0) <= 0) {
+  if ((state.remaining[val][newSuit] || 0) <= 0) {
     // Optional: give user feedback
     console.warn(`No ${val} of ${newSuit} left in shoe`);
     return; // silently reject invalid change
   }
 
   // Now it's safe: move one card from newSuit → oldSuit
-  remaining[val][oldSuit]++;           // put back to old suit
-  remaining[val][newSuit]--;           // take from new suit
+  state.remaining[val][oldSuit]++;           // put back to old suit
+  state.remaining[val][newSuit]--;           // take from new suit
 
   // Update the card display
   lastAddedCard.dataset.suit = newSuit;
@@ -302,15 +305,15 @@ function addCard(val) {
     else if (a && a.length > 0) target = target + 'A';
   }
 
-  counts.HiLo.rc += map.HiLo[val];
-  counts.APC.rc  += map.APC[val];
-  counts.Zen.rc  += map.Zen[val];
-  counts.OmegaII.rc += map.OmegaII[val];
+  state.counts.HiLo.rc += map.HiLo[val];
+  state.counts.APC.rc  += map.APC[val];
+  state.counts.Zen.rc  += map.Zen[val];
+  state.counts.OmegaII.rc += map.OmegaII[val];
   if (val === 'A') aceRC -= 1;
 
   const suit = pickSuit(val);
-  remaining[val][suit]--;
-  if (remaining[val][suit] < 0) remaining[val][suit] = 0;
+  state.remaining[val][suit]--;
+  if (state.remaining[val][suit] < 0) state.remaining[val][suit] = 0;
   cardsDealt++;
 
   const sym = symMap[suit];
@@ -366,12 +369,12 @@ function removeLastCardFromActiveHand() {
   if (!hand || hand.length === 0) return;
   const card = hand.pop();
   const suit = card.element.dataset.suit;
-  counts.HiLo.rc -= map.HiLo[card.value];
-  counts.APC.rc  -= map.APC[card.value];
-  counts.Zen.rc  -= map.Zen[card.value];
+  state.counts.HiLo.rc -= map.HiLo[card.value];
+  state.counts.APC.rc  -= map.APC[card.value];
+  state.counts.Zen.rc  -= map.Zen[card.value];
   if (card.value === 'A') aceRC += 1;
-  remaining[card.value][suit]++;
-  if (remaining[card.value][suit] < 0) remaining[card.value][suit] = 0;
+  state.remaining[card.value][suit]++;
+  if (state.remaining[card.value][suit] < 0) state.remaining[card.value][suit] = 0;
   cardsDealt--;
   card.element.remove();
   if (hand.length === 0) lastAddedCard = null;
@@ -436,10 +439,10 @@ document.getElementById('shuffleBtn').onclick = () => {
   if (!confirm('Start fresh 8-deck shoe?')) return;
   initRemaining();
   cardsDealt = 0;
-  counts.HiLo.rc = 0;
-  counts.APC.rc = 0;
-  counts.Zen.rc = 0;
-  counts.OmegaII.rc = 0; // Added
+  state.counts.HiLo.rc = 0;
+  state.counts.APC.rc = 0;
+  state.counts.Zen.rc = 0;
+  state.counts.OmegaII.rc = 0; // Added
   aceRC = 0;
   document.querySelectorAll('.mini').forEach(m => m.remove());
   for (const s in hands) hands[s] = [];
@@ -707,18 +710,18 @@ function getComposition(hand) {
 
 function computePPEV(pPerfect=25, pColored=12, pMixed=6) {
   let t = 0;
-  rankOrder.forEach(r => suits.forEach(s => t += remaining[r][s] || 0));
+  rankOrder.forEach(r => suits.forEach(s => t += state.remaining[r][s] || 0));
   if (t < 5) return -1;
   const denom = t * (t - 1);
   let totalPair = 0, perfect = 0, colored = 0;
   rankOrder.forEach(r => {
     let numR = 0, numRed = 0, numBlack = 0, perfRed = 0, perfBlack = 0;
     ['hearts', 'diamonds'].forEach(s => {
-      let ns = remaining[r][s] || 0;
+      let ns = state.remaining[r][s] || 0;
       numR += ns; numRed += ns; perfRed += ns * (ns - 1);
     });
     ['spades', 'clubs'].forEach(s => {
-      let ns = remaining[r][s] || 0;
+      let ns = state.remaining[r][s] || 0;
       numR += ns; numBlack += ns; perfBlack += ns * (ns - 1);
     });
     totalPair += numR * (numR - 1);
@@ -732,24 +735,24 @@ function computePPEV(pPerfect=25, pColored=12, pMixed=6) {
 
 function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flush:5}) {
   let t = 0;
-  rankOrder.forEach(r => suits.forEach(s => t += remaining[r][s] || 0));
+  rankOrder.forEach(r => suits.forEach(s => t += state.remaining[r][s] || 0));
   if (t < 5) return -1;
   const denom = t * (t - 1) * (t - 2);
   let pSuited3 = 0;
   rankOrder.forEach(r => suits.forEach(s => {
-    let ns = remaining[r][s] || 0;
+    let ns = state.remaining[r][s] || 0;
     pSuited3 += ns * (ns - 1) * (ns - 2);
   }));
   let pSF = 0;
   straightTriples.forEach(triple => suits.forEach(s => {
-    let p1 = remaining[triple[0]][s] || 0;
-    let p2 = remaining[triple[1]][s] || 0;
-    let p3 = remaining[triple[2]][s] || 0;
+    let p1 = state.remaining[triple[0]][s] || 0;
+    let p2 = state.remaining[triple[1]][s] || 0;
+    let p3 = state.remaining[triple[2]][s] || 0;
     pSF += p1 * p2 * p3 * 6;
   }));
   let pThree = 0;
   rankOrder.forEach(r => {
-    let nr = 0; suits.forEach(s => nr += remaining[r][s] || 0);
+    let nr = 0; suits.forEach(s => nr += state.remaining[r][s] || 0);
     pThree += nr * (nr - 1) * (nr - 2);
   });
   let pRegThree = pThree - pSuited3;
@@ -757,16 +760,16 @@ function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flush:5}) {
   straightTriples.forEach(triple => {
     let n1 = 0, n2 = 0, n3 = 0;
     suits.forEach(s => {
-      n1 += remaining[triple[0]][s] || 0;
-      n2 += remaining[triple[1]][s] || 0;
-      n3 += remaining[triple[2]][s] || 0;
+      n1 += state.remaining[triple[0]][s] || 0;
+      n2 += state.remaining[triple[1]][s] || 0;
+      n3 += state.remaining[triple[2]][s] || 0;
     });
     pTotStr += n1 * n2 * n3 * 6;
   });
   let pStr = pTotStr - pSF;
   let pTotFlush = 0;
   suits.forEach(s => {
-    let ns = 0; rankOrder.forEach(r => ns += remaining[r][s] || 0);
+    let ns = 0; rankOrder.forEach(r => ns += state.remaining[r][s] || 0);
     pTotFlush += ns * (ns - 1) * (ns - 2);
   });
   let pFlush = pTotFlush - pSF - pSuited3;
@@ -807,24 +810,24 @@ function updateAll() {
   let total_rem = 0;
   let rankTotals = rankOrder.map(r => {
     let tot = 0;
-    suits.forEach(s => tot += remaining[r][s] || 0);
+    suits.forEach(s => tot += state.remaining[r][s] || 0);
     total_rem += tot;
     return tot;
   });
   const decksLeft = Math.max(total_rem / 52, 0.01);
-  let tcHiLo = decksLeft > 0.01 ? counts.HiLo.rc / decksLeft : 0;
-  let tcAPC = decksLeft > 0.01 ? counts.APC.rc / decksLeft : 0;
-  let tcZen = decksLeft > 0.01 ? counts.Zen.rc / decksLeft : 0;
-  let tcOmegaII = decksLeft > 0.01 ? counts.OmegaII.rc / decksLeft : 0;
+  let tcHiLo = decksLeft > 0.01 ? state.counts.HiLo.rc / decksLeft : 0;
+  let tcAPC = decksLeft > 0.01 ? state.counts.APC.rc / decksLeft : 0;
+  let tcZen = decksLeft > 0.01 ? state.counts.Zen.rc / decksLeft : 0;
+  let tcOmegaII = decksLeft > 0.01 ? state.counts.OmegaII.rc / decksLeft : 0;
   let aceTC = decksLeft > 0.01 ? aceRC / decksLeft : 0;
   const pen = ((1 - total_rem / TOTAL_CARDS) * 100).toFixed(2);
 
-  let acesLeft = 0;
-  suits.forEach(s => acesLeft += remaining['A'][s] || 0);
+  let state.acesLeft = 0;
+  suits.forEach(s => state.acesLeft += state.remaining['A'][s] || 0);
 
   document.getElementById('penetration').textContent = pen + '%';
   document.getElementById('decksLeft').textContent = decksLeft.toFixed(2);
-  document.getElementById('hiLoRC').textContent = counts.HiLo.rc;
+  document.getElementById('hiLoRC').textContent = state.counts.HiLo.rc;
   document.getElementById('hiLoTC').textContent = tcHiLo.toFixed(2);
   document.getElementById('hiLoTC2').textContent = tcHiLo.toFixed(2);
   document.getElementById('apcTC').textContent = tcAPC.toFixed(2);
@@ -833,7 +836,7 @@ function updateAll() {
   document.getElementById('aceTC').textContent = aceTC.toFixed(2);
 
   const expAces = 32 * decksLeft;
-  const ra = expAces > 0 ? (acesLeft / expAces) - 1 : 0;
+  const ra = expAces > 0 ? (state.acesLeft / expAces) - 1 : 0;
   document.getElementById('ra').textContent = ra.toFixed(2);
   document.getElementById('ra').className = ra >= 0 ? '' : 'negative';
 
@@ -851,7 +854,7 @@ function updateAll() {
   const dealerUp = hands.dealer[0]?.value;
   if (dealerUp === 'A' && !insuranceResolved) {
     let tensLeft = 0;
-    ['10','J','Q','K'].forEach(r => suits.forEach(s => tensLeft += remaining[r][s] || 0));
+    ['10','J','Q','K'].forEach(r => suits.forEach(s => tensLeft += state.remaining[r][s] || 0));
     const pBJ = total_rem > 0 ? tensLeft / total_rem : 0.3077;
     let insEV = pBJ - 0.5 + RA_FACTOR * ra + 0.005 * aceTC;
     const take = insEV > 0;
@@ -945,7 +948,7 @@ function updateAll() {
   const suitOrder = ['spades', 'clubs', 'hearts', 'diamonds'];
   let suitTotals = { spades: 0, clubs: 0, hearts: 0, diamonds: 0 };
   suits.forEach(suit => {
-    rankOrder.forEach(r => suitTotals[suit] += remaining[r][suit] || 0);
+    rankOrder.forEach(r => suitTotals[suit] += state.remaining[r][suit] || 0);
   });
   updateCombinedChart(rankTotals, suitTotals, rankOrder, suitOrder);
   
