@@ -2,11 +2,16 @@
 name: Deploy PR for QA
 
 on:
-  # Runs on pushes to PR (commits), PR opens, and reopens
+  # Runs on pushes to PR (including new commits)
   pull_request:
-    types: [opened, synchronize, reopened]
   # Allows you to run this workflow manually from the Actions tab
+  # Provides an input for PR number when running manually (to handle cases where no PR context exists)
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR Number (required for manual runs to specify subfolder)'
+        required: true
+        type: string
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -25,30 +30,51 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      # Updated to point to the subfolder URL for this PR
-      url: ${{ steps.deployment.outputs.page_url }}/pr-${{ github.event.pull_request.number }}
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
+      # Define PR number: Use event.number for PRs, or input for manual runs
+      - name: Set PR number
+        id: pr_info
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_NUMBER="${{ github.event.number }}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+          else
+            echo "Unsupported trigger: ${{ github.event_name }}"
+            exit 1
+          fi
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          if [ -z "$PR_NUMBER" ]; then
+            echo "PR number is required but not set."
+            exit 1
+          fi
+      
+      # Create a deploy directory and copy static files into a PR-specific subfolder
+      # This structures the artifact so Pages serves it at /pr-{PR_NUMBER}/
+      - name: Prepare deploy directory with PR subfolder
+        run: |
+          mkdir -p deploy/pr-${PR_NUMBER}
+          # Copy all static files (excluding version control and hidden dirs like .git, .github)
+          # Adjust this if your static files are in a specific subfolder (e.g., change '.' to 'dist/')
+          # Use rsync for better exclusion control (install if needed, but it's usually available)
+          rsync -av --exclude='.git' --exclude='.github' --exclude='.gitignore' --exclude='node_modules' --exclude='*.md' --exclude='*.yml' . deploy/pr-${PR_NUMBER}/
+          # Alternative simple cp if rsync isn't preferred: cp -r . deploy/pr-${PR_NUMBER}/ 2>/dev/null || true
+          # Then manually remove unwanted dirs: rm -rf deploy/pr-${PR_NUMBER}/.git deploy/pr-${PR_NUMBER}/.github deploy/pr-${PR_NUMBER}/node_modules
+      
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      # New step: Prepare the artifact with content in a PR-specific subfolder
-      - name: Prepare artifact for subfolder deployment
-        run: |
-          mkdir -p artifact/pr-${{ github.event.pull_request.number }}
-          # Copy all files to the subfolder (excluding hidden files like .git for cleanliness)
-          shopt -s dotglob  # Include hidden files in * (but we'll exclude .git explicitly)
-          for file in *; do
-            if [[ "$file" != ".git" && "$file" != "artifact" ]]; then
-              cp -r "$file" artifact/pr-${{ github.event.pull_request.number }}/
-            fi
-          done
+      
+      # Upload the deploy directory (which includes the PR subfolder)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload the prepared artifact (which has the subfolder structure)
-          path: 'artifact'
+          path: 'deploy'  # Now uploads with the subfolder structure
+      
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
