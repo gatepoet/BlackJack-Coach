@@ -7,7 +7,7 @@ const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
 // Single state object to hold all mutable data
 const state = {
   remaining: {},
-  state.acesLeft: 0,
+  acesLeft: 0,
   aceRC: 0,                  // Ace side-count
   cardsDealt: 0,
   insuranceResolved: false,
@@ -53,6 +53,7 @@ function initRemaining() {
   state.aceRC = 0;
 }
 
+
 function getFirstPlayingSeat() {
   for (let seat = 1; seat <= 7; seat++) {
     const seatStr = seat.toString();
@@ -61,15 +62,6 @@ function getFirstPlayingSeat() {
   return YOUR_SEAT;
 }
 
-function initRemaining() {
-  state.remaining = {};
-  rankOrder.forEach(rank => {
-    state.remaining[rank] = {};
-    suits.forEach(suit => state.remaining[rank][suit] = 8);
-  });
-  state.acesLeft = 0;
-  aceRC = 0;
-}
 
 function pickSuit(rank) {
   let total = 0;
@@ -822,7 +814,6 @@ function updateAll() {
   let aceTC = decksLeft > 0.01 ? aceRC / decksLeft : 0;
   const pen = ((1 - total_rem / TOTAL_CARDS) * 100).toFixed(2);
 
-  let state.acesLeft = 0;
   suits.forEach(s => state.acesLeft += state.remaining['A'][s] || 0);
 
   document.getElementById('penetration').textContent = pen + '%';
