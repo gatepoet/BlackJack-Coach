@@ -40,10 +40,9 @@ function removeLastCardFromActiveHand() {
   
   const card = hand.pop();
   const suit = card.element.dataset.suit;
-  state.counts.HiLo.rc -= map.HiLo[card.value];
-  state.counts.APC.rc -= map.APC[card.value];
-  state.counts.Zen.rc -= map.Zen[card.value];
-  state.counts.OmegaII.rc -= map.OmegaII[card.value];
+  Object.keys(state.counts).forEach(countingSystem => {
+    state.counts[countingSystem].rc -= map[countingSystem][card.value];
+  });
   if (card.value === 'A') aceRC += 1;
 
   state.remaining[card.value][suit]++;
