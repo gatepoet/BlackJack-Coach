@@ -42,12 +42,88 @@ const state = {
 };
 
 // Import modules
-const { initRemaining, pickSuit } = require('./modules/deck');
-const { addCard, removeLastCardFromActiveHand, performSplit } = require('./modules/cardHandler');
-const { getFirstPlayingSeat, disableSeat, moveLeft, moveRight } = require('./modules/seatManager');
-const { initCombinedChart } = require('./modules/charting');
-const { buildTable, updateSplitButtonVisibility } = require('./modules/uiManager');
-const { setInputTarget } = require('./modules/inputHandler');
+import { initRemaining, pickSuit, suits as deckSuits } from './modules/deck.js';
+import { addCard, removeLastCardFromActiveHand, performSplit } from './modules/cardHandler.js';
+import { getFirstPlayingSeat, disableSeat, moveLeft, moveRight } from './modules/seatManager.js';
+import { initCombinedChart } from './modules/charting.js';
+import { buildTable, updateSplitButtonVisibility, moveCard } from './modules/uiManager.js';
+import { setInputTarget } from './modules/inputHandler.js';
 
 // Initialize the state.remaining counts for a fresh shoe
 initRemaining();
+
+// DOM ready function
+function init() {
+  // Build the table UI
+  buildTable(state);
+  
+  // Store references to hand containers
+  state.order.forEach(seat => {
+    const container = document.getElementById(`hand-${seat}`);
+    if (container) {
+      state.handContainers[seat] = container;
+    }
+    
+    // Store references to split containers
+    const splitContainer = document.getElementById(`split-${seat}`);
+    if (splitContainer) {
+      state.splitContainers[seat] = splitContainer;
+    }
+    
+    // Store references to split buttons
+    const splitBtn = document.getElementById(`splitBtn-${seat}`);
+    if (splitBtn) {
+      state.splitButtons[seat] = splitBtn;
+    }
+  });
+  
+  // Initialize chart
+  initCombinedChart();
+  
+  // Set initial input target
+  setInputTarget(state, '1');
+  
+  // Add event listeners for keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    switch(e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        const currentIdx = state.order.indexOf(state.inputTarget.replace(/[AB]$/, ''));
+        moveLeft(state, state.inputTarget.replace(/[AB]$/, ''), currentIdx);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        const currentIdx2 = state.order.indexOf(state.inputTarget.replace(/[AB]$/, ''));
+        moveRight(state, state.inputTarget.replace(/[AB]$/, ''), currentIdx2);
+        break;
+      case 's':
+      case 'S':
+        e.preventDefault();
+        const baseSeat = state.inputTarget.replace(/[AB]$/, '');
+        if (baseSeat !== 'dealer') {
+          disableSeat(state, baseSeat);
+        }
+        break;
+    }
+  });
+  
+  // Add event listeners for split buttons
+  state.order.forEach(seat => {
+    if (seat !== 'dealer') {
+      const btn = document.getElementById(`splitBtn-${seat}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          performSplit(state, seat);
+          updateSplitButtonVisibility(state);
+        });
+      }
+    }
+  });
+}
+
+// Wait for DOM to be ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

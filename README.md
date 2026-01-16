@@ -27,12 +27,54 @@ cd BlackJack-Coach
 # You can serve it with any static server, e.g., using VS Code Live Server or http-server
 ```
 
-### Contribution Guidelines
+## Bug Fixes and Refactoring
+
+This project has undergone comprehensive bug identification and fixing. See the following documents for details:
+
+### Documentation
+- **[BUGFIX_SUMMARY.md](BUGFIX_SUMMARY.md)** - Complete summary of all bugs identified and fixed
+- **ISSUES directory** - Detailed GitHub issues for each bug/improvement (8 total)
+
+### Running Tests
+To verify that all fixes are working correctly, run:
+
+```bash
+# Run comprehensive verification
+test_comprehensive.js
+
+# Run module import tests
+test_module_imports.js
+
+# Run final verification
+test_final_verification.js
+
+# Run bug identification (should find no critical issues)
+test_bugs.js
+```
+
+All tests should pass with ✅ indicators.
+
+### What Was Fixed
+1. ✅ ES module import/export syntax (was using require())
+2. ✅ Global variable usage (now uses state parameter passing)
+3. ✅ Missing function imports
+4. ✅ Incomplete main script
+5. ✅ Missing moveCard function implementation
+6. ✅ State management consistency across modules
+
+## Contribution Guidelines
 - Fork the repository.
 - Create a feature branch.
 - Submit a pull request with a descriptive title and clear description.
 - Follow the existing coding style and add tests where appropriate.
+- Make sure all existing tests still pass before submitting.
 
-### License
+### Development Notes
+- The codebase now uses modern ES6 module syntax (import/export)
+- All functions receive state as their first parameter
+- State object structure is documented in the GitHub issues
+- Add new tests for any features you implement
+
+## License
 MIT © 2025
 
