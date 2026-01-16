@@ -1,6 +1,7 @@
 {
   "name": "blackjack-coach",
   "version": "1.0.0",
+  "type": "module",
   "description": "Interactive blackjack coaching web app",
   "main": "index.js",
   "scripts": {

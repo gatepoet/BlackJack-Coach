@@ -14,4 +14,4 @@ function initCombinedChart() {
 }
 
 // Export functions
-module.exports = { initCombinedChart };
+export { initCombinedChart };

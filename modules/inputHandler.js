@@ -1,4 +1,21 @@
-function setInputTarget(t) {
+/**
+ * Set the current input target seat
+ * @param {Object} state - Global state object
+ * @param {string} t - Target seat identifier
+ */
+function setInputTarget(state, t) {
+  if (!state || !t) {
+    console.error('setInputTarget: Missing parameters');
+    return;
+  }
+
+  const splitContainers = state.splitContainers;
+  const hands = state.hands;
+  let inputTarget = state.inputTarget;
+  const disabledSeats = state.disabledSeats;
+  const order = state.order;
+  let activeSplit = state.activeSplit;
+
   if (!t.match(/[AB]$/) && splitContainers[t] && splitContainers[t].style.display !== 'none') {
     const aHand = hands[t + 'A'];
     const bHand = hands[t + 'B'];
@@ -7,6 +24,7 @@ function setInputTarget(t) {
   }
 
   inputTarget = t;
+  state.inputTarget = t;
   const baseT = t.replace(/[AB]$/, '');
   if (!t.match(/[AB]$/) && disabledSeats.has(baseT)) {
     const baseIdx = order.indexOf(baseT);
@@ -22,6 +40,7 @@ function setInputTarget(t) {
   }
   t = skipDisabled(t);
   activeSplit = t.match(/[AB]$/) ? t : null;
+  state.activeSplit = activeSplit;
 
   document.querySelectorAll('.seat-round').forEach(h => h.classList.remove('active'));
   document.querySelectorAll('.split-hand').forEach(h => h.classList.remove('active'));
@@ -38,4 +57,4 @@ function setInputTarget(t) {
 }
 
 // Export functions
-module.exports = { setInputTarget };
+export { setInputTarget };
