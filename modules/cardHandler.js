@@ -30,6 +30,12 @@ function addCard(val, target) {
   if (!hands[target]) hands[target] = [];
   hands[target].push({ value: val, element: mini });
   lastAddedCard = mini;
+  
+  // Update state tracking
+  state.cardsDealt++;
+  
+  // Update UI elements
+  updateUI();
 }
 
 // Remove the last card from the active hand
@@ -40,16 +46,19 @@ function removeLastCardFromActiveHand() {
   
   const card = hand.pop();
   const suit = card.element.dataset.suit;
-  state.counts.HiLo.rc -= map.HiLo[card.value];
-  state.counts.APC.rc -= map.APC[card.value];
-  state.counts.Zen.rc -= map.Zen[card.value];
-  state.counts.OmegaII.rc -= map.OmegaII[card.value];
+  state.counts.WongHalves.rc -= map.WongHalves[card.value];
   if (card.value === 'A') aceRC += 1;
 
   state.remaining[card.value][suit]++;
   if (state.remaining[card.value][suit] < 0) state.remaining[card.value][suit] = 0;
   card.element.remove();
   if (hand.length === 0) lastAddedCard = null;
+  
+  // Update state tracking
+  state.cardsDealt--;
+  
+  // Update UI elements
+  updateUI();
 }
 
 // Perform a split operation
