@@ -1,4 +1,6 @@
-function getFirstPlayingSeat() {
+import { setInputTarget } from './inputHandler.js';
+
+function getFirstPlayingSeat(state) {
   for (let seat = 1; seat <= 7; seat++) {
     const seatStr = seat.toString();
     if (!state.disabledSeats.has(seatStr)) return seatStr;
@@ -6,7 +8,7 @@ function getFirstPlayingSeat() {
   return state.YOUR_SEAT;
 }
 
-function disableSeat(seat) {
+function disableSeat(seat, state) {
   const base = seat.replace(/[AB]$/, '');
   const seatEl = document.querySelector(`.seat-round[data-seat="${base === 'dealer' ? 'dealer' : base}"]`);
   if (state.disabledSeats.has(base)) {
@@ -17,12 +19,12 @@ function disableSeat(seat) {
     seatEl.classList.add('disabled');
   }
   const currentIdx = state.order.indexOf(base);
-  moveLeft(base, currentIdx);
+  moveLeft(base, currentIdx, state);
 }
 
-function moveLeft(base, currentIdx) {
+function moveLeft(base, currentIdx, state) {
   if (state.activeSplit && state.activeSplit.endsWith('B')) {
-    setInputTarget(base + 'A');
+    setInputTarget(base + 'A', state);
     return;
   }
   let nextIdx = currentIdx > 0 ? currentIdx - 1 : state.order.length - 1;
@@ -32,14 +34,14 @@ function moveLeft(base, currentIdx) {
     candidate = state.order[nextIdx];
     if (nextIdx === currentIdx) break;
   }
-  setInputTarget(candidate);
+  setInputTarget(candidate, state);
 }
 
-function moveRight(base, currentIdx) {
+function moveRight(base, currentIdx, state) {
   if (state.activeSplit && state.activeSplit.endsWith('A')) {
     const bHand = state.hands[base + 'B'];
     if (bHand && bHand.length > 0) {
-      setInputTarget(base + 'B');
+      setInputTarget(base + 'B', state);
       return;
     }
   }
@@ -50,7 +52,7 @@ function moveRight(base, currentIdx) {
     candidate = state.order[nextIdx];
     if (nextIdx === currentIdx) break;
   }
-  setInputTarget(candidate);
+  setInputTarget(candidate, state);
 }
 
 // Export functions

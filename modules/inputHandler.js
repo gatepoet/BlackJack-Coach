@@ -1,4 +1,4 @@
-function setInputTarget(t) {
+function setInputTarget(t, state) {
   if (!t.match(/[AB]$/) && state.splitContainers[t] && state.splitContainers[t].style.display !== 'none') {
     const aHand = state.hands[t + 'A'];
     const bHand = state.hands[t + 'B'];
@@ -13,14 +13,14 @@ function setInputTarget(t) {
     t = state.order[(baseIdx + state.order.length - 1) % state.order.length];
   }
 
-  function skipDisabled(candidate) {
+  function skipDisabled(candidate, state) {
     const baseC = candidate.replace(/[AB]$/, '');
     if (candidate.match(/[AB]$/) || !state.disabledSeats.has(baseC)) return candidate;
     const cIdx = state.order.indexOf(baseC);
     const nextC = state.order[(cIdx + state.order.length - 1) % state.order.length];
-    return skipDisabled(nextC);
+    return skipDisabled(nextC, state);
   }
-  t = skipDisabled(t);
+  t = skipDisabled(t, state);
   state.activeSplit = t.match(/[AB]$/) ? t : null;
 
   document.querySelectorAll('.seat-round').forEach(h => h.classList.remove('active'));

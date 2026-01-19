@@ -28,7 +28,7 @@ function buildTable(state) {
     const header = col.querySelector('.seat-round');
     header.addEventListener('contextmenu', e => {
       e.preventDefault();
-      disableSeat(seat);
+      disableSeat(seat, state);
     });
 
     let clickTimeout;
@@ -54,7 +54,7 @@ function buildTable(state) {
     header.addEventListener('dblclick', doubleClick);
     header.addEventListener('click', () => {
       clickTimeout = setTimeout(function() {
-        setInputTarget(seat)
+        setInputTarget(seat, state);
       }, clickDelay);
     });
 
@@ -62,7 +62,13 @@ function buildTable(state) {
   });
 }
 
-function updateSplitButtonVisibility() {
+function moveCard() {
+  // This function is a placeholder for the Sortable.js onMove event
+  // The actual implementation would be more complex
+  return true;
+}
+
+function updateSplitButtonVisibility(state) {
   Object.keys(state.splitButtons).forEach(seat => {
     const btn = state.splitButtons[seat];
     btn.style.display = 'none';
@@ -76,4 +82,4 @@ function updateSplitButtonVisibility() {
 }
 
 // Export functions
-export { buildTable, updateSplitButtonVisibility };
+export { buildTable, updateSplitButtonVisibility, moveCard };
