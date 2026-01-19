@@ -1,12 +1,12 @@
-function buildTable() {
+function buildTable(state) {
   const table = document.getElementById('table');
   table.innerHTML = '';
-  order.forEach(seat => {
+  state.order.forEach(seat => {
     const col = document.createElement('div');
     col.className = 'column';
     col.innerHTML = `
       <div class="seat-header">
-        <div class="seat-round ${seat === 'dealer' ? 'dealer' : seat} ${seat === YOUR_SEAT ? 'your-seat' : ''}" data-seat="${seat}">
+        <div class="seat-round ${seat === 'dealer' ? 'dealer' : seat} ${seat === state.YOUR_SEAT ? 'your-seat' : ''}" data-seat="${seat}">
           ${seat === 'dealer' ? 'D' : seat}
         </div>
       </div>
@@ -21,9 +21,9 @@ function buildTable() {
     `;
     table.appendChild(col);
 
-    handContainers[seat] = col.querySelector(`#hand-${seat}`);
-    splitContainers[seat] = col.querySelector(`#split-${seat}`);
-    if (seat !== 'dealer') splitButtons[seat] = col.querySelector('#splitBtn-'+seat);
+    state.handContainers[seat] = col.querySelector(`#hand-${seat}`);
+    state.splitContainers[seat] = col.querySelector(`#split-${seat}`);
+    if (seat !== 'dealer') state.splitButtons[seat] = col.querySelector('#splitBtn-'+seat);
 
     const header = col.querySelector('.seat-round');
     header.addEventListener('contextmenu', e => {
@@ -37,7 +37,7 @@ function buildTable() {
     function doubleClick(e) {
       clearTimeout(clickTimeout);
       e.stopPropagation();
-      YOUR_SEAT = seat;
+      state.YOUR_SEAT = seat;
       document.querySelectorAll('.your-seat').forEach(x => x.classList.remove('your-seat'));
       header.classList.add('your-seat');
     }
@@ -58,22 +58,22 @@ function buildTable() {
       }, clickDelay);
     });
 
-    new Sortable(handContainers[seat], { group: 'cards', animation: 150, onMove: moveCard });
-  };
+    new Sortable(state.handContainers[seat], { group: 'cards', animation: 150, onMove: moveCard });
+  });
 }
 
 function updateSplitButtonVisibility() {
-  Object.keys(splitButtons).forEach(seat => {
-    const btn = splitButtons[seat];
+  Object.keys(state.splitButtons).forEach(seat => {
+    const btn = state.splitButtons[seat];
     btn.style.display = 'none';
 
-    if (seat !== YOUR_SEAT) return;
+    if (seat !== state.YOUR_SEAT) return;
 
-    if (hands[seat]?.length === 2 && hands[seat][0].value === hands[seat][1].value && splitContainers[seat].style.display === 'none') {
+    if (state.hands[seat]?.length === 2 && state.hands[seat][0].value === state.hands[seat][1].value && state.splitContainers[seat].style.display === 'none') {
       btn.style.display = 'block';
     }
   });
 }
 
 // Export functions
-module.exports = { buildTable, updateSplitButtonVisibility };
+export { buildTable, updateSplitButtonVisibility };

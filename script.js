@@ -1,5 +1,12 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
+import { initRemaining, pickSuit } from './modules/deck.js';
+import { addCard, removeLastCardFromActiveHand, performSplit } from './modules/cardHandler.js';
+import { getFirstPlayingSeat, disableSeat, moveLeft, moveRight } from './modules/seatManager.js';
+import { initCombinedChart } from './modules/charting.js';
+import { buildTable, updateSplitButtonVisibility } from './modules/uiManager.js';
+import { setInputTarget } from './modules/inputHandler.js';
+
 const SHOE_DECKS = 8;
 const TOTAL_CARDS = SHOE_DECKS * 52;
 const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
@@ -42,12 +49,7 @@ const state = {
 };
 
 // Import modules
-const { initRemaining, pickSuit } = require('./modules/deck');
-const { addCard, removeLastCardFromActiveHand, performSplit } = require('./modules/cardHandler');
-const { getFirstPlayingSeat, disableSeat, moveLeft, moveRight } = require('./modules/seatManager');
-const { initCombinedChart } = require('./modules/charting');
-const { buildTable, updateSplitButtonVisibility } = require('./modules/uiManager');
-const { setInputTarget } = require('./modules/inputHandler');
-
 // Initialize the state.remaining counts for a fresh shoe
-initRemaining();
+buildTable(state);
+initCombinedChart();
+initRemaining(state);
