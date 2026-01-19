@@ -98,4 +98,4 @@ function performSplit(baseSeat, state) {
 }
 
 // Export functions
-export { addCard, removeLastCardFromActiveHand, performSplit };
+export { addCard, removeLastCardFromActiveHand, performSplit, changeLastCardSuit };
