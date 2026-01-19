@@ -11,12 +11,9 @@ const state = {
   cardsDealt: 0,
   insuranceResolved: false,
   lastAddedCard: null,
-  counts: { HiLo: { rc: 0 }, APC: { rc: 0 }, Zen: { rc: 0 }, OmegaII: { rc: 0 }},
+  counts: { WongHalves: { rc: 0 }},
   map: {
-    HiLo: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1},
-    APC:  {'A':0,'2':1,'3':1,'4':2,'5':3,'6':2,'7':2,'8':1,'9':-3,'10':-4},
-    Zen: {'A':-1,'2':1,'3':1,'4':2,'5':2,'6':2,'7':1,'8':0,'9':0,'10':-2},
-    OmegaII: {'A':-2,'2':1,'3':1,'4':2,'5':3,'6':2,'7':1,'8':-1,'9':-1,'10':-2}
+    WongHalves: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':1,'8':0.5,'9':-0.5,'10':-1}
   },
   YOUR_SEAT: '1',
   inputTarget: '1',
@@ -51,3 +48,55 @@ const { setInputTarget } = require('./modules/inputHandler');
 
 // Initialize the state.remaining counts for a fresh shoe
 initRemaining();
+
+// Function to calculate true count
+function calculateTrueCount() {
+  const runningCount = state.counts.WongHalves.rc;
+  const decksRemaining = SHOE_DECKS - (state.cardsDealt / 52);
+  return decksRemaining > 0 ? runningCount / decksRemaining : 0;
+}
+
+// Function to update UI elements
+function updateUI() {
+  // Update counts display
+  const rcElement = document.getElementById('wongHalvesRC');
+  const tcElement = document.getElementById('wongHalvesTC2');
+  
+  if (rcElement) {
+    rcElement.textContent = state.counts.WongHalves.rc.toFixed(1);
+  }
+  
+  if (tcElement) {
+    const trueCount = calculateTrueCount();
+    tcElement.textContent = trueCount.toFixed(2);
+  }
+  
+  // Update decks left
+  const decksLeftElement = document.getElementById('decksLeft');
+  if (decksLeftElement) {
+    const decksRemaining = SHOE_DECKS - (state.cardsDealt / 52);
+    decksLeftElement.textContent = decksRemaining.toFixed(2);
+  }
+  
+  // Update penetration
+  const penetrationElement = document.getElementById('penetration');
+  if (penetrationElement) {
+    const penetration = (state.cardsDealt / TOTAL_CARDS) * 100;
+    penetrationElement.textContent = penetration.toFixed(1) + '%';
+  }
+  
+  // Update RA (running average)
+  const raElement = document.getElementById('ra');
+  if (raElement) {
+    raElement.textContent = state.aceRC.toFixed(2);
+  }
+  
+  // Update RoR (Risk of Ruin)
+  const rorElement = document.getElementById('ror');
+  if (rorElement) {
+    // Simple RoR calculation based on running count and decks
+    const trueCount = calculateTrueCount();
+    const ror = 100 * Math.min(1, Math.max(0, 0.5 - 0.05 * trueCount));
+    rorElement.textContent = ror.toFixed(2) + '%';
+  }
+}
