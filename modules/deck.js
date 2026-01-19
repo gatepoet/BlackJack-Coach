@@ -1,18 +1,19 @@
 const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
 
 // Initialize remaining cards in the deck
-defaultState = { remaining: {}, aceRC: 0 };
+let defaultState = { remaining: {}, aceRC: 0 };
 let rankOrder = [];
 
-function initRemaining(state, providedRankOrder) {
-  Object.assign(defaultState, state);
-  rankOrder = providedRankOrder;
+function initRemaining(state) {
+  defaultState = { remaining: {}, aceRC: 0 };
+  rankOrder = state.rankOrder;
   defaultState.remaining = {};
   rankOrder.forEach(rank => {
     defaultState.remaining[rank] = {}
     suits.forEach(suit => defaultState.remaining[rank][suit] = 8);
   });
-  return defaultState;
+  Object.assign(state, defaultState);
+  return state;
 }
 
 // Pick a random suit for a given rank
@@ -30,4 +31,4 @@ function pickSuit(rank) {
 }
 
 // Export functions
-module.exports = { initRemaining, pickSuit };
+export { initRemaining, pickSuit };
