@@ -1,7 +1,7 @@
 import { pickSuit } from './deck.js';
 
 // Add a card to the specified hand
-function addCard(val, target) {
+function addCard(val, target, state) {
   const suit = pickSuit(val);
   state.remaining[val][suit]--;
   if (state.remaining[val][suit] < 0) state.remaining[val][suit] = 0;
@@ -33,7 +33,7 @@ function addCard(val, target) {
 }
 
 // Remove the last card from the active hand
-function removeLastCardFromActiveHand() {
+function removeLastCardFromActiveHand(state) {
   const target = state.inputTarget;
   const hand = state.hands[target];
   if (!hand || hand.length === 0) return;
@@ -53,7 +53,7 @@ function removeLastCardFromActiveHand() {
 }
 
 // Perform a split operation
-function performSplit(baseSeat) {
+function performSplit(baseSeat, state) {
   const hand = state.hands[baseSeat];
   if (!hand || hand.length !== 2 || hand[0].value !== hand[1].value || state.splitContainers[baseSeat].style.display !== 'none') return;
 
