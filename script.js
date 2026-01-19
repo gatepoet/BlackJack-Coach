@@ -1,7 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 import { initRemaining, pickSuit } from './modules/deck.js';
-import { addCard, removeLastCardFromActiveHand, performSplit } from './modules/cardHandler.js';
+import { addCard, removeLastCardFromActiveHand, performSplit, changeLastCardSuit } from './modules/cardHandler.js';
 import { getFirstPlayingSeat, disableSeat, moveLeft, moveRight } from './modules/seatManager.js';
 import { initCombinedChart } from './modules/charting.js';
 import { buildTable, updateSplitButtonVisibility } from './modules/uiManager.js';
@@ -69,8 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.suit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const suit = btn.dataset.suit;
-      const rank = btn.dataset.rank;
-      addCard(rank, state.inputTarget, state);
+      changeLastCardSuit(suit, state);
       updateSplitButtonVisibility(state);
     });
   });

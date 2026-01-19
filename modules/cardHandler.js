@@ -10,7 +10,7 @@ function addCard(val, target, state) {
   Object.keys(state.counts).forEach(countingSystem => {
     state.counts[countingSystem].rc += state.map[countingSystem][val];
   }); 
-  if (val === 'A') state.aceRC -= 1;
+  if (val === 'A') state.aceRC += 1;
   
   // Add the card to the DOM
   const mini = document.createElement('div');
@@ -30,6 +30,30 @@ function addCard(val, target, state) {
   if (!state.hands[target]) state.hands[target] = [];
   state.hands[target].push({ value: val, element: mini });
   state.lastAddedCard = mini;
+}
+
+// Change the suit of the last added card
+function changeLastCardSuit(newSuit, state) {
+  if (!state.lastAddedCard) return;
+  
+  const lastCard = state.lastAddedCard;
+  const currentValue = lastCard.dataset.val;
+  const oldSuit = lastCard.dataset.suit;
+  
+  // Update the suit in the DOM
+  lastCard.dataset.suit = newSuit;
+  const suitElements = lastCard.querySelectorAll('.suit');
+  suitElements.forEach(el => {
+    el.textContent = state.symMap[newSuit];
+  });
+  
+  // Update the suit in the state
+  state.remaining[currentValue][oldSuit]++;
+  state.remaining[currentValue][newSuit]--;
+  if (state.remaining[currentValue][newSuit] < 0) state.remaining[currentValue][newSuit] = 0;
+  
+  // No need to update card counting systems as the card value is unchanged
+  // The card counting is only based on card value, not suit
 }
 
 // Remove the last card from the active hand
