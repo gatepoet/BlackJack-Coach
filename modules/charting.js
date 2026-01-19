@@ -27,6 +27,9 @@ function initCombinedChart() {
     .attr('dominant-baseline', 'middle')
     .attr('fill', '#94a3b8')
     .text('Chart Loading...');
+    
+  // Store reference to the chart for future updates
+  combinedChart = svg;
 }
 
 // Export functions

@@ -1,6 +1,32 @@
 function buildTable(state) {
   const table = document.getElementById('table');
   table.innerHTML = '';
+  
+  // Create card buttons grid
+  const cardsGrid = document.getElementById('cardsGrid');
+  cardsGrid.innerHTML = '';
+  state.rankOrder.forEach(rank => {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn';
+    btn.textContent = rank === '10' ? 'T' : rank;
+    btn.dataset.val = rank;
+    btn.style.backgroundColor = rank === 'A' ? '#dc2626' : rank === 'K' || rank === 'Q' || rank === 'J' ? '#1d4ed8' : '#1d4ed8';
+    cardsGrid.appendChild(btn);
+  });
+  
+  // Create suit buttons grid
+  const suitGrid = document.getElementById('suitGrid');
+  suitGrid.innerHTML = '';
+  const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+  suits.forEach(suit => {
+    const btn = document.createElement('button');
+    btn.className = 'suit-btn';
+    btn.textContent = state.symMap[suit];
+    btn.dataset.suit = suit;
+    btn.dataset.rank = 'A'; // Default for now
+    suitGrid.appendChild(btn);
+  });
+  
   state.order.forEach(seat => {
     const col = document.createElement('div');
     col.className = 'column';

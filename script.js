@@ -50,39 +50,43 @@ const state = {
 
 // Import modules
 // Initialize the state.remaining counts for a fresh shoe
-buildTable(state);
-initCombinedChart();
-initRemaining(state);
+document.addEventListener('DOMContentLoaded', () => {
+  buildTable(state);
+  initCombinedChart();
+  initRemaining(state);
+});
 
 // Add event listeners for card buttons
-document.querySelectorAll('.card-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    addCard(btn.dataset.val, state.inputTarget, state);
-    updateSplitButtonVisibility(state);
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.card-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      addCard(btn.dataset.val, state.inputTarget, state);
+      updateSplitButtonVisibility(state);
+    });
   });
-});
 
-// Add event listeners for suit buttons
-document.querySelectorAll('.suit-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const suit = btn.dataset.suit;
-    const rank = btn.dataset.rank;
-    addCard(rank, state.inputTarget, state);
-    updateSplitButtonVisibility(state);
+  // Add event listeners for suit buttons
+  document.querySelectorAll('.suit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const suit = btn.dataset.suit;
+      const rank = btn.dataset.rank;
+      addCard(rank, state.inputTarget, state);
+      updateSplitButtonVisibility(state);
+    });
   });
-});
 
-// Add event listeners for split buttons
-document.querySelectorAll('.split-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const seat = btn.id.replace('splitBtn-', '');
-    performSplit(seat, state);
+  // Add event listeners for split buttons
+  document.querySelectorAll('.split-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const seat = btn.id.replace('splitBtn-', '');
+      performSplit(seat, state);
+    });
   });
-});
 
-// Add event listeners for seat headers
-document.querySelectorAll('.seat-round').forEach(seat => {
-  seat.addEventListener('click', () => {
-    setInputTarget(seat.dataset.seat, state);
+  // Add event listeners for seat headers
+  document.querySelectorAll('.seat-round').forEach(seat => {
+    seat.addEventListener('click', () => {
+      setInputTarget(seat.dataset.seat, state);
+    });
   });
 });
