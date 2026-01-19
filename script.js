@@ -89,4 +89,19 @@ document.addEventListener('DOMContentLoaded', () => {
       setInputTarget(seat.dataset.seat, state);
     });
   });
+
+  // Add keyboard event listeners for navigation
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const base = state.inputTarget.replace(/[AB]$/, '');
+      const currentIdx = state.order.indexOf(base);
+      moveLeft(base, currentIdx, state);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      const base = state.inputTarget.replace(/[AB]$/, '');
+      const currentIdx = state.order.indexOf(base);
+      moveRight(base, currentIdx, state);
+    }
+  });
 });
