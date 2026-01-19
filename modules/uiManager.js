@@ -1,3 +1,5 @@
+import { setInputTarget } from './inputHandler.js';
+
 function buildTable(state) {
   const table = document.getElementById('table');
   table.innerHTML = '';
