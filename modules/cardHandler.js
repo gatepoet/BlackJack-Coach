@@ -64,6 +64,7 @@ function removeLastCardFromActiveHand(state) {
   
   const card = hand.pop();
   const suit = card.element.dataset.suit;
+  state.counts.WongHalves.rc -= state.map.WongHalves[card.value];
   state.counts.HiLo.rc -= state.map.HiLo[card.value];
   state.counts.APC.rc -= state.map.APC[card.value];
   state.counts.Zen.rc -= state.map.Zen[card.value];

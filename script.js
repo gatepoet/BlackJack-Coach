@@ -18,8 +18,9 @@ const state = {
   cardsDealt: 0,
   insuranceResolved: false,
   lastAddedCard: null,
-  counts: { HiLo: { rc: 0 }, APC: { rc: 0 }, Zen: { rc: 0 }, OmegaII: { rc: 0 }},
+  counts: { WongHalves: { rc: 0 }, HiLo: { rc: 0 }, APC: { rc: 0 }, Zen: { rc: 0 }, OmegaII: { rc: 0 }},
   map: {
+    WongHalves: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':1,'8':0.5,'9':-0.5,'10':-1},
     HiLo: {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1},
     APC:  {'A':0,'2':1,'3':1,'4':2,'5':3,'6':2,'7':2,'8':1,'9':-3,'10':-4},
     Zen: {'A':-1,'2':1,'3':1,'4':2,'5':2,'6':2,'7':1,'8':0,'9':0,'10':-2},
