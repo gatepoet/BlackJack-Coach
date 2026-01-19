@@ -1,5 +1,3 @@
-import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
-
 import { initRemaining, pickSuit } from './modules/deck.js';
 import { addCard, removeLastCardFromActiveHand, performSplit } from './modules/cardHandler.js';
 import { getFirstPlayingSeat, disableSeat, moveLeft, moveRight } from './modules/seatManager.js';
