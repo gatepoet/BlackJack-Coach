@@ -64,12 +64,11 @@ function removeLastCardFromActiveHand(state) {
   
   const card = hand.pop();
   const suit = card.element.dataset.suit;
-  state.counts.WongHalves.rc -= state.map.WongHalves[card.value];
-  state.counts.HiLo.rc -= state.map.HiLo[card.value];
-  state.counts.APC.rc -= state.map.APC[card.value];
-  state.counts.Zen.rc -= state.map.Zen[card.value];
-  state.counts.OmegaII.rc -= state.map.OmegaII[card.value];
-  if (card.value === 'A') state.aceRC += 1;
+  // Update counts for all card counting systems
+  Object.keys(state.counts).forEach(countingSystem => {
+    state.counts[countingSystem].rc -= state.map[countingSystem][card.value];
+  });
+  if (card.value === 'A') state.aceRC -= 1;
 
   state.remaining[card.value][suit]++;
   if (state.remaining[card.value][suit] < 0) state.remaining[card.value][suit] = 0;
