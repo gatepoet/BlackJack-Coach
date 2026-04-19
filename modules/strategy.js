@@ -213,6 +213,7 @@ export function compute21p3EV(pays = {suited3:100, sf:40, three:30, str:10, flus
 }
 
 export function getPlayAdvice(tcHiLo, tcZen, tcAPC, tcOmegaII) {
+  const dealerCard = state.hands.dealer[0]?.value || null;
   const hand = state.activeSplit ? state.hands[state.activeSplit] : state.hands[state.YOUR_SEAT];
   if (!dealerCard || !hand || hand.length < 2) return 'Waiting for your hand...';
   const label = state.activeSplit ? ` Split ${state.activeSplit.slice(-1)}` : '';
