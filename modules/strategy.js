@@ -549,3 +549,6 @@ export function updateAll() {
   });
   document.getElementById('advice').innerHTML = getPlayAdvice(tcHiLo, tcZen, tcAPC, tcOmegaII);
 }
+
+// Register updateAll globally so other modules can trigger it after card operations
+window.updateAll = updateAll;
