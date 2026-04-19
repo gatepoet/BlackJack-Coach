@@ -240,31 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ---
 
-### M4. state.acesLeft Never Updated During Deal/Undo
-**Files:** `modules/deck.js` AND `modules/state.js` (used by strategy.js)
-**What's wrong:** `state.acesLeft` is initialized to 0 in `initRemaining()` but never incremented or decremented during card operations. It stays at 0 forever, making the RA ace tracking display always show "+0.00" regardless of actual remaining aces.
+### M4. state.acesLeft Never Updated During Deal/Undo ✅ FIXED (commit 7d513ca)
+**Status: FIXED**
+**What was wrong:** `state.acesLeft` was initialized to 0 in `initRemaining()` but never incremented/decremented during card operations. Strategy.js already computes it dynamically in `updateAll()` (lines 379-380).
 
-Meanwhile, `state.remaining['A'][suit]` counts ARE accurately maintained by pickSuit/addCard/removeLastCard — so we have accurate data but no variable to track it.
-
-**Fix steps:**
-1. In `cardHandler.js`, update the `addCard()` function to decrement acesLeft when an Ace is dealt:
-```javascript
-// After line 28 (after picking suit and decrementing remaining):
-if (val === 'A') state.acesLeft--;
-```
-2. In `removeLastCardFromActiveHand()`, increment it back on undo:
-```javascript
-// After restoring card to deck:
-if (card.value === 'A') state.acesLeft++;
-```
-3. Alternatively, remove the variable entirely and compute aces left dynamically in updateAll():
-```javascript
-state.acesLeft = 0;
-suits.forEach(s => state.acesLeft += state.remaining['A'][s] || 0);
-```
-This is already done at line 408-409 of strategy.js, so option 3 is simpler — just remove the stale variable from state and rely on the computed value in updateAll().
-
-**Verification:** Deal some aces, watch the RA display change. Undo an ace deal, see it return to expected values.
+**Fix applied:** Removed stale `state.acesLeft = 0;` from `deck.js` line 22. The dynamic computation in `updateAll()` handles it correctly every time the UI updates after card operations.
 
 ---
 
@@ -284,21 +264,11 @@ document.getElementById('ror').textContent = getCurrentRoR(bankroll, betUnit, ed
 
 ## LOW — Cleanup & Refactor
 
-### L1. compOverrides Empty Feature Scaffolding
-**File:** `modules/strategy.js` line 6
-**What's wrong:** `const compOverrides = {}` is defined but never populated with any data. The getComposition() function generates keys, and there's a lookup at lines 253-264 that checks for matches — but since the object is empty, this entire feature path is dead code.
+### L1. compOverrides Empty Feature Scaffolding ✅ FIXED (commit 7d513ca)
+**Status: FIXED**
+**What was wrong:** `const compOverrides = {}` defined but never populated — dead code path in the decision engine.
 
-**Fix steps:**
-1. Either populate it with composition-dependent strategy deviations (requires research into standard comp-dep splits), or remove the scaffolding to reduce confusion:
-```javascript
-// Option A: Remove entirely
-const compOverrides = {}; // delete and remove getComposition() call
-// Option B: Add a TODO comment if planning to implement later
-/* TODO: Populate with composition-dependent overrides */
-// const compOverrides = { '5-4-3-2-A-A': {'10': 'HIT'} };
-```
-
-**Verification:** No behavioral change either way — the feature was never functional.
+**Fix applied:** Added TODO comment at line 6 of strategy.js noting this is scaffolding for future composition-dependent deviation data. No behavioral change since feature was never functional.
 
 ---
 
@@ -313,21 +283,11 @@ const compOverrides = {}; // delete and remove getComposition() call
 
 ---
 
-### L3. suits.reverse() Mutates Shared Exported Array
-**File:** `script.js` line 25
-**What's wrong:** `suits.reverse()` permanently mutates the array exported from state.js, changing it from `['spades','hearts','diamonds','clubs']` to `['clubs','diamonds','hearts','spades']`. All other modules importing `suits` get this reversed version. This is intentional for UI button ordering but creates fragile assumptions — any logic in charting.js or strategy.js that iterates over suits expects canonical order.
+### L3. suits.reverse() Mutates Shared Exported Array ✅ FIXED (commit 7d513ca)
+**Status: FIXED**
+**What was wrong:** `suits.reverse()` permanently mutated the array exported from state.js, changing it from canonical order to reversed — fragile for any logic that iterates over suits expecting canonical order.
 
-**Fix steps:**
-1. In script.js, use a local copy instead of mutating the shared export:
-```javascript
-// Before: suits.reverse().forEach(s => { ... });
-[...suits].reverse().forEach(s => { // spread creates local copy
-    const b = document.createElement('button');
-    // ... same code
-});
-```
-
-**Verification:** After fix, charting.js and strategy.js should still work correctly (they iterate suits in their own order). The suit buttons on screen should appear in the intended visual order.
+**Fix applied:** Changed line 32 of script.js to use `[...suits].reverse().forEach(...)` which creates a local copy before reversing. All other modules (charting.js, strategy.js) continue to receive the canonical `['spades','hearts','diamonds','clubs']` order.
 
 ---
 
