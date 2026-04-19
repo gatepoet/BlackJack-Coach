@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cardsGrid').appendChild(b);
   });
 
-  suits.reverse().forEach(s => {
+  [...suits].reverse().forEach(s => {
     const b = document.createElement('button');
     b.className = `suit-btn card-btn ${s}`;
     b.textContent = state.symMap[s];

@@ -2,8 +2,8 @@
 import { state, suits, SHOE_DECKS, TOTAL_CARDS, EDGE_PER_TC, VAR } from './state.js';
 import { updateCombinedChart } from './charting.js';
 
-// Composition-dependent overrides (empty - can be extended)
-const compOverrides = {};
+// Composition-dependent overrides (empty - can be extended with hand-specific strategy deviations)
+const compOverrides = {}; // TODO: populate with composition-dependent deviation data when available
 
 const i18 = {
   // Insurance
