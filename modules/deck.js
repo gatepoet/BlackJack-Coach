@@ -1,34 +1,24 @@
-const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
+// Module: deck - Deck management (pickSuit, initRemaining)
+import { state, suits, SHOE_DECKS } from './state.js';
 
-// Initialize remaining cards in the deck
-let defaultState = { remaining: {}, aceRC: 0 };
-let rankOrder = [];
-
-function initRemaining(state) {
-  defaultState = { remaining: {}, aceRC: 0 };
-  rankOrder = state.rankOrder;
-  defaultState.remaining = {};
-  rankOrder.forEach(rank => {
-    defaultState.remaining[rank] = {}
-    suits.forEach(suit => defaultState.remaining[rank][suit] = 8);
-  });
-  Object.assign(state, defaultState);
-  return state;
-}
-
-// Pick a random suit for a given rank
-function pickSuit(rank) {
+export function pickSuit(rank) {
   let total = 0;
-  suits.forEach(s => total += defaultState.remaining[rank][s] || 0);
+  suits.forEach(s => total += state.remaining[rank][s] || 0);
   if (total === 0) return suits[0];
-  const rand = Math.random() * total;
-  let currentRand = 0;
-  for (const suit of suits) {
-    currentRand += defaultState.remaining[rank][suit] || 0;
-    if (rand <= currentRand) return suit;
+  let rand = Math.random() * total;
+  for (let suit of suits) {
+    rand -= state.remaining[rank][suit] || 0;
+    if (rand <= 0) return suit;
   }
   return suits[0];
 }
 
-// Export functions
-export { initRemaining, pickSuit };
+export function initRemaining() {
+  state.remaining = {};
+  state.rankOrder.forEach(rank => {
+    state.remaining[rank] = {};
+    suits.forEach(suit => state.remaining[rank][suit] = SHOE_DECKS);
+  });
+  state.acesLeft = 0;
+  state.aceRC = 0;
+}
