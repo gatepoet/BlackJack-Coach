@@ -19,6 +19,5 @@ export function initRemaining() {
     state.remaining[rank] = {};
     suits.forEach(suit => state.remaining[rank][suit] = SHOE_DECKS);
   });
-  state.acesLeft = 0;
   state.aceRC = 0;
 }
