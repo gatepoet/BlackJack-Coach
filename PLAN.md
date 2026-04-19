@@ -4,10 +4,11 @@ All findings from a comprehensive code audit across 7 files (script.js, modules/
 
 ---
 
-## CRITICAL — Fix Immediately
+## CRITICAL — ✅ Fixed (commit a99bd44)
 
 ### C1. HTML Mismatched Tag Breaks infoBar Layout
-**File:** `index.html` line 49
+**Status: FIXED** ✅
+**File:** `index.html` line 49 → `<div class="sidebets-inline">`
 **What's wrong:** `<div class="sidebets-inline"></span>` opens with a `<div>` but closes with `</span>`. The browser's error recovery injects implicit closing tags, breaking the entire infoBar layout structure and cascading into wrong element positioning for all adjacent content.
 
 **Fix steps:**
@@ -376,3 +377,29 @@ Work through items in severity order, but some dependencies matter:
 3. **C3 (container null crash)** should come early for safety — prevents cascading failures during testing of other fixes.
 4. **C2 (infinite loop)** and **H2 (wrong direction navigation)** are seatManager changes that should be grouped together since they're all in the same file.
 5. Remaining medium/low items can follow in any order since they're independent.
+
+
+---
+
+## COMPLETED FIXES (commit a99bd44)
+
+| Item | Status | Description |
+|------|--------|-------------|
+| C1 | FIXED | HTML mismatched `</span>` tag on line 49 — replaced with proper closing |
+| C2 | FIXED | Recursive skipDisabled() infinite loop — replaced with iterative maxIter guard |
+| C3 | FIXED | Container null crash in addCard() — added inputTarget validation + container null check |
+| H1 | FIXED | Duplicate DOMContentLoaded handlers merged into one (script.js) |
+| H2 | FIXED | Counter-directional disabled-seat skip removed from setInputTarget() |
+| H3 | FIXED | lastTap initialized to 0 instead of undefined in uiManager.js |
+| L4 | FIXED | Removed duplicate D3 CDN script import from index.html line 7 |
+| M1 | FIXED | Replaced hardcoded variance 1.309 with imported VAR constant (strategy.js:328) |
+| M2 | FIXED | Removed dead code `if (tc < 1) return 1;` in getOmegaRamp() |
+| L2 | FIXED | Removed unused calculateRoR() Monte Carlo function |
+
+## REMAINING (low priority, fix on demand)
+
+| Item | File | Description |
+|------|------|-------------|
+| M4 | modules/deck.js + cardHandler.js | state.acesLeft never updated during deal/undo; strategy.js already computes it dynamically so simplest fix is to remove stale variable from initRemaining() and rely on updateAll() computation (lines 408-409) |
+| L1 | modules/strategy.js:6 | compOverrides = {} empty scaffolding — either populate or add TODO comment. No behavioral impact since feature was never functional |
+| L3 | script.js:25 | suits.reverse() permanently mutates exported array — replace with [...suits].reverse() to create local copy |
