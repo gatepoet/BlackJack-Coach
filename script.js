@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('keydown', e => {
-    if (document.body.classList.contains('shortcuts-disabled')) return; // skip all custom handling
+    if (shortcutsDisabled()) return; // skip all custom handling when focus is on interactive elements
 
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
       const c = keyMap[e.key];
