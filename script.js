@@ -64,8 +64,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Keyboard navigation
+  // Keyboard navigation — skip all custom handling when focus is on a native interactive element
+  const inputs = document.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), textarea, select');
+  const toggleItems = document.querySelectorAll('.toggle-item, .toggle-label');
+
+  function shortcutsDisabled() {
+    const t = document.activeElement;
+    if (!t || t === document.body) return false;
+    // Native interactive elements: input/textarea/select/button
+    if (['INPUT','TEXTAREA','SELECT','BUTTON'].includes(t.tagName)) return true;
+    // Labels wrapping checkboxes or toggle labels in topbar
+    if (t.closest('.toggle-item') !== null || t.classList.contains('toggle-label')) return true;
+    return false;
+  }
+
+  function updateShortcutIndicator() {
+    const el = document.getElementById('shortcutIndicator');
+    if (!el) return;
+    el.style.display = shortcutsDisabled() ? 'flex' : 'none';
+  }
+
+  // Attach focus/blur to all interactive elements in settings areas
+  [...inputs, ...toggleItems].forEach(el => {
+    el.addEventListener('focus', () => { updateShortcutIndicator(); });
+    el.addEventListener('blur', () => { updateShortcutIndicator(); });
+  });
+
   document.addEventListener('keydown', e => {
+    if (document.body.classList.contains('shortcuts-disabled')) return; // skip all custom handling
+
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
       const c = keyMap[e.key];
       if (c) { e.preventDefault(); addCard(c); return; }

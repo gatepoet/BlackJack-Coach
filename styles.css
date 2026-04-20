@@ -79,7 +79,15 @@ body{margin:0;background:#0d1117;color:#eee;font-family:system-ui,-apple-system,
 
 /* Bottom: Symmetric grid with uniform heights */
 /* Updated Bottom and Charts CSS for Full Space Usage */
-.bottom{background:#161b22;padding:12px;display:flex;gap:12px;align-items:stretch;font-size:0.8rem;} /* Changed to flex for better filling */
+.shortcut-indicator {
+  position: absolute; top: 4px; left: 4px; z-index: 30;
+  background: #ea580c; color: #fff; font-size: 0.65rem; font-weight: bold;
+  padding: 2px 8px; border-radius: 10px; display: none; align-items: center; gap: 4px;
+  box-shadow: 0 2px 8px #ea580c44; pointer-events: none; user-select: none;
+}
+.shortcut-indicator::before { content: '⊘'; font-size: 0.75rem; }
+
+.bottom{background:#161b22;padding:12px;display:flex;gap:12px;align-items:stretch;font-size:0.8rem;position:relative;}
 .betRamp{display:flex;flex-direction:column;gap:6px;background:linear-gradient(to bottom, #1e293b, #161b22);padding:10px;border-radius:10px;text-align:center;overflow:hidden;box-shadow:inset 0 1px 4px #0004;flex:2;} /* flex:2 for betRamp */
 .charts-grid{display:flex;flex:1;align-items:stretch;border-radius:10px;background:#0d1117;box-shadow:0 2px 8px #0006;overflow:hidden;} /* flex:1, full height, background/shadow for consistency */
 #combinedChart{width:100%;height:100%;flex:1;} /* Full size */
