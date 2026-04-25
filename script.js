@@ -292,6 +292,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Expose for state module callbacks
   window.updateWongAdvisory = updateWongAdvisory;
 
+  // Dev test bridge: allow manual updateWongStreak calls from console
+  if (window.location.search.includes('debug=1')) {
+    window.updateWongStreak = updateWongStreak;
+    window.clearCurrentHandWongState = clearCurrentHandWongState;
+    console.log('[DEBUG] window.updateWongStreak and window.clearCurrentHandWongState exposed');
+    // Additional: expose state for inspection
+    window.__debugState = state;
+    console.log('[DEBUG] state exposed as window.__debugState');
+    console.log('[DEBUG] Example: __debugState.currentHandWongState = "exit"; updateWongStreak("exit"); repeat');
+  }
+
   // Insurance yes/no buttons
   document.getElementById('bjYes').onclick = () => {
     if (!state.insuranceResolved) {

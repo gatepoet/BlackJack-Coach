@@ -115,6 +115,9 @@ let sessionState = {
   exitReason: null
 };
 
+// Export for ES module imports
+export const session = sessionState;
+
 Object.defineProperty(globalThis, 'session', {
   get: () => sessionState,
   set: v => { sessionState = v; },
