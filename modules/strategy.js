@@ -1,5 +1,5 @@
 // Module: strategy - Decision engine, betting calculations, and updateAll
-import { state, suits, SHOE_DECKS, TOTAL_CARDS, EDGE_PER_TC, VAR } from './state.js';
+import { state, suits, SHOE_DECKS, TOTAL_CARDS, EDGE_PER_TC, VAR, getTierParams, getBetFloor, session, SESSION_CONFIG } from './state.js';
 import { updateCombinedChart } from './charting.js';
 
 // Composition-dependent overrides (empty - can be extended with hand-specific strategy deviations)
@@ -120,7 +120,7 @@ function getOmegaRamp(tc) {
   return 12; // +5+
 }
 
-function computeTotal(hand) {
+export function computeTotal(hand) {
   if (!hand || hand.length === 0) return { total: 0, bust: false, soft: false };
   let total = 0, aces = 0;
   for (const c of hand) {
@@ -358,6 +358,70 @@ export function getCurrentRoR(bankroll, betUnit, edge) {
   return ror < 1 ? "<1%" : ror + "%";
 }
 
+// ── Heat simulation with safety gates ──────────────────────────────────────
+/**
+ * Apply heat/camouflage variance only when safe to do so.
+ * Safety rules:
+ *   - Bankroll ≥ $200
+ *   - True count ≥ +2 (positive edge justification)
+ *   - Resulting risk ≤ 15% of current bankroll
+ */
+function applyHeatSimulation(units, tc, bankroll, betUnit, enabled) {
+  if (!enabled) return { units, factor: 1.0, level: 'Cool' };
+
+  // Safety gate 1: small bankroll — skip heat to avoid volatility spikes
+  if (bankroll < 200) {
+    return { units, factor: 1.0, level: 'Cool (heat skipped — small BR)' };
+  }
+
+  // Safety gate 2: negative or weak count — no camouflage benefit
+  if (tc < 2) {
+    return { units, factor: 1.0, level: 'Cool (heat skipped — low TC)' };
+  }
+
+  // Original heat factor: decreases as |tc| increases (more heat when count is neutral)
+  const heatFactor = Math.max(0.5, Math.min(2.0, 1 + (1 - Math.abs(tc / 5))));
+  const variance = 0.7 + Math.random() * 0.6; // 0.7–1.3 uniform
+  const totalFactor = heatFactor * variance;
+
+  // Safety gate 3: risk cap — never risk >15% of BR on a single hand
+  const projectedUnits = units * totalFactor;
+  const projectedRisk = projectedUnits * betUnit;
+  const riskCapUnits = Math.floor(bankroll * 0.15 / betUnit);
+
+  if (projectedUnits > riskCapUnits) {
+    return { units: Math.min(units, riskCapUnits), factor: totalFactor, level: 'Warm (risk-capped)' };
+  }
+
+  const safeUnits = projectedUnits;
+  const level = heatFactor < 0.8 ? 'Cool' : heatFactor < 0.95 ? 'Warm' : 'Hot';
+  return { units: safeUnits, factor: totalFactor, level };
+}
+
+// ── Peak-reference drawdown protection ─────────────────────────────────────
+function getGrowthAdjustedUnits(rawUnits, currentBR, peakBR) {
+  // Within 5% of peak — bet normally
+  if (currentBR >= peakBR * 0.95) return rawUnits;
+
+  // Drawdown penalty: down 10% → 0.85×, down 25% → 0.625×, down 50% → 0.5×
+  const drawdown = (peakBR - currentBR) / peakBR;
+  const penalty = Math.max(0.5, 1 - drawdown * 1.5);
+  return rawUnits * penalty;
+}
+
+// ── Session result estimation (approximate) ─────────────────────────────────
+/**
+ * Estimate net win from hand result based on current TC.
+ * Used for session tracking before hand settles.
+ * Returns: expected value in units (positive = player advantage)
+ */
+function estimateHandEV(tc, useInsurance = false) {
+  // Basic EV from count: edge = EDGE_PER_TC × max(0, tc)
+  const edge = EDGE_PER_TC * Math.max(0, tc);
+  // Insurance EV handled separately in UI; ignore here
+  return edge;
+}
+
 // The big updateAll function - orchestrates all state updates and UI refreshes
 export function updateAll() {
   let total_rem = 0;
@@ -405,6 +469,12 @@ export function updateAll() {
   const advice = document.getElementById('advice');
   advice.className = `wong-${wongState}`;
 
+  // Capture wong state for streak tracking during active hand
+  // Hand is considered "in progress" once dealer and player both have cards
+  if (state.hands['1'] && state.hands['1'].length > 0 && state.hands.dealer && state.hands.dealer.length > 0) {
+    state.currentHandWongState = wongState;
+  }
+
   const dealerUp = state.hands.dealer[0]?.value;
   if (dealerUp === 'A' && !state.insuranceResolved) {
     let tensLeft = 0;
@@ -432,6 +502,11 @@ export function updateAll() {
   const betUnit = parseFloat(document.getElementById('betUnit').value) || 25;
   const mikkiMultiplier = parseFloat(document.getElementById('mikkiMultiplier').value) || 3;
 
+  // Update peak bankroll reference (for drawdown protection)
+  if (!globalThis.peakBankroll || bankroll > globalThis.peakBankroll) {
+    globalThis.peakBankroll = bankroll;
+  }
+
   // === 1. Calculate your REAL edge ===
   const rawEdgeFromCount = EDGE_PER_TC * Math.max(0, tcEffective);           // e.g. +3 TC → +1.5%
   const raEdgeBonus      = EDGE_PER_TC * globalThis.RA_FACTOR * Math.max(0, -ra);      // ace-poor = extra edge
@@ -444,43 +519,58 @@ export function updateAll() {
   let heatColor = '#94a3b8';
 
   if (state.useKelly) {
-    const kellyFraction = 0.5;
+    const kellyFraction = getTierParams(bankroll).kellyFrac;
     finalUnits = (edge / VAR) * kellyFraction * (bankroll / betUnit);
   } else if (state.indexSystem === 'Omega II') {
     finalUnits = getOmegaRamp(tcEffective);
   } else {
-    finalUnits = tcEffective <= 0 ? 1 : mikkiMultiplier * tcEffective + 1;
+    // Dynamic Mikki multiplier based on bankroll tier
+    const params = getTierParams(bankroll);
+    const rawUnits = tcEffective <= 0 ? 1 : params.baseMult * tcEffective + 1;
+    // Cap at tier's max TC to prevent overexposure on small bankrolls
+    finalUnits = Math.min(rawUnits, params.maxTC * params.baseMult + 1);
   }
 
   // RA adjustment
   const raMultiplier = ra > 0.5 ? 0.80 : ra < -0.5 ? 1.20 : 1;
   finalUnits *= raMultiplier;
 
-  // === HEAT SIMULATION (camouflage + visual feedback) ===
-  if (state.useHeatSim) {
-    // This affects your actual bet (cover)
-    const heatFactor = Math.max(0.5, Math.min(2.0, 1 + (1 - Math.abs(tcEffective))));
-    const variance = 0.7 + Math.random() * 0.6; // 0.7–1.3
-    finalUnits *= heatFactor * variance;
-
-    // This is just for the UI label/color
-    if (heatFactor < 0.8) {
-      heatLevel = 'Cool';
-      heatColor = '#3b82f6';
-    } else if (heatFactor < 0.95) {
-      heatLevel = 'Warm';
-      heatColor = '#f59e0b';
-    } else {
-      heatLevel = 'Hot';
-      heatColor = '#ef4444';
-    }
+  // Bankroll-tiered minimum bet floor — but ONLY when count is favorable
+  // On negative/neutral counts we want $1 (Wong-out equivalent) to preserve seat
+  if (tcEffective > 0) {
+    const floorUnits = getBetFloor(bankroll, betUnit);
+    finalUnits = Math.max(finalUnits, floorUnits);
   } else {
-    // No heat sim → always Cool (clean play)
-    heatLevel = 'Cool';
-    heatColor = '#94a3b8';
+    // Force table minimum on unfavorable counts
+    finalUnits = Math.max(1, finalUnits);
   }
 
+   // === HEAT SIMULATION (camouflage + visual feedback) ===
+   const heatResult = applyHeatSimulation(finalUnits, tcEffective, bankroll, betUnit, state.useHeatSim);
+   finalUnits = heatResult.units;
+   heatLevel = heatResult.level;
+   // Derive color from level prefix
+   if (heatLevel.includes('Cool')) heatColor = '#94a3b8';
+   else if (heatLevel.includes('Warm')) heatColor = '#f59e0b';
+   else heatColor = '#ef4444';
+
   // === FINAL CLAMPING (only once!) ===
+
+  // Peak-reference drawdown protection: scale down if far from peak
+  if (globalThis.peakBankroll && typeof globalThis.peakBankroll === 'number') {
+    const currentBR = bankroll;
+    const peakBR = globalThis.peakBankroll;
+    if (currentBR < peakBR * 0.95) {
+      const drawdown = (peakBR - currentBR) / peakBR;
+      const penalty = Math.max(0.5, 1 - drawdown * 1.5);
+      finalUnits *= penalty;
+    }
+  }
+
+  // Hard risk cap: never risk more than 15% of bankroll on a single hand
+  const maxUnitsByRisk = Math.floor(bankroll * 0.15 / betUnit);
+  finalUnits = Math.min(finalUnits, maxUnitsByRisk);
+
   const maxUnits = Math.floor(bankroll / betUnit);
   finalUnits = Math.max(1, Math.round(finalUnits));        // never $0
   finalUnits = Math.min(finalUnits, maxUnits);
@@ -488,15 +578,27 @@ export function updateAll() {
 
   const betDollar = finalUnits * betUnit;
 
+  // Store current bet for settlement tracking
+  state.lastBetUnits = finalUnits;
+  state.lastBetDollar = betDollar;
+
   // === DISPLAY ===
-  document.getElementById('mainBet').innerHTML = 
-    `${finalUnits}x ($${betDollar.toLocaleString()})`;
+  const betEl = document.getElementById('mainBet');
+  const betPct = betDollar / bankroll;
+  // Risk tier coloring
+  if (betPct >= 0.15) betEl.className = 'bet-risk-high';
+  else if (betPct >= 0.10) betEl.className = 'bet-risk-medium';
+  else betEl.className = '';
+  betEl.innerHTML = `${finalUnits}x ($${betDollar.toLocaleString()})`;
 
   const heatEl = document.getElementById('heatLevel');
   heatEl.textContent = heatLevel;
   heatEl.style.color = heatColor;
-  // Consolidated kellyFrac
-  document.getElementById('kellyFrac').textContent = state.useKelly ? '0.5 Kelly' : state.indexSystem === 'Omega II' ? 'Omega II' : 'Basic';
+  // Consolidated kellyFrac — show actual tier value
+  const kellyDisplay = state.useKelly 
+    ? `${(getTierParams(bankroll).kellyFrac * 100).toFixed(0)}% Kelly`
+    : state.indexSystem === 'Omega II' ? 'Omega II' : 'Basic';
+  document.getElementById('kellyFrac').textContent = kellyDisplay;
 
   const suitOrder = ['spades', 'clubs', 'hearts', 'diamonds'];
   let suitTotals = { spades: 0, clubs: 0, hearts: 0, diamonds: 0 };
@@ -548,6 +650,11 @@ export function updateAll() {
     totalEl.textContent = `Total: ${total}`;
   });
   document.getElementById('advice').innerHTML = getPlayAdvice(tcHiLo, tcZen, tcAPC, tcOmegaII);
+
+  // Refresh session UI if active
+  if (typeof window.updateSessionStatus === 'function') {
+    window.updateSessionStatus();
+  }
 }
 
 // Register updateAll globally so other modules can trigger it after card operations

@@ -46,6 +46,7 @@
       <div>Ace: <span id="aceTC">+0.00</span></div>
       <div>RoR: <span id="ror">0.00%</span></div>
     </div>
+    <div id="wongAdvisory" class="wong-advisory"></div>
     <div class="sidebets-inline">
       <span>PP EV: <span id="ppEV">-4.1%</span> <span id="ppAdvice">No</span> <span id="ppBet">No Bet</span>
       <span>21+3 EV: <span id="p3EV">-3.7%</span> <span id="p3Advice">No</span> <span id="p3Bet">No Bet</span>
@@ -62,8 +63,23 @@
           <input id="bankroll" type="number" value="10000" min="1000" step="100" title="Bankroll ($)" style="width:80px;">
           <input id="betUnit" type="number" value="25" min="5" step="5" title="Bet Unit ($)" style="width:60px;">
         </div>
-        
-        
+
+        <!-- Session bankroll management -->
+        <div class="session-inputs" id="sessionInputs" style="margin-top: 8px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+          <div class="session-row" style="display:flex; gap:8px; align-items:center; margin-bottom:4px;">
+            <label title="Session bankroll (portion of total for disciplined play)">Session $:</label>
+            <input id="sessionBankroll" type="number" value="0" min="0" step="1" title="Session bankroll (0 = use full bankroll)" style="width:70px;">
+            <button id="startSessionBtn" style="padding:2px 8px; font-size:11px;">Start</button>
+            <button id="endSessionBtn" style="padding:2px 8px; font-size:11px;" disabled>End</button>
+          </div>
+          <div class="session-status" id="sessionStatus" style="font-size:11px; color:#888;">
+            Session: inactive
+          </div>
+          <div class="session-progress" id="sessionProgress" style="height:4px; background:#333; border-radius:2px; margin-top:4px; overflow:hidden;">
+            <div id="sessionProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #22c55e, #3b82f6); transition: width 0.3s;"></div>
+          </div>
+        </div>
+
         <!-- Sidebets: Collapsible section -->
         <input type="checkbox" id="toggleSidebets" class="toggle-checkbox">
         <label for="toggleSidebets" id="sidebetLabel" class="toggle-label">Advanced Sidebets</label>

@@ -10,13 +10,14 @@
   },
   "devDependencies": {
     "eslint": "^9.0.0",
+    "http-server": "^14.1.1",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
     "prettier": "^3.0.0",
-    "vitest": "^2.0.0",
-    "http-server": "^14.1.1"
+    "vitest": "^2.0.0"
   },
   "dependencies": {
+    "@playwright/test": "^1.59.1",
     "chart.js": "^4.5.1",
     "d3": "^7.9.0"
   }
